@@ -29,9 +29,136 @@ Maintained at https://github.com/jonsim/tiny-backup
 """
 import argparse     # ArgumentParser
 import ConfigParser # SafeConfigParser
-import sys          # exit
 import os.path      # isfile, expanduser
+import subprocess   # check_output
 
+__version__ = '1.0.0'
+
+DEST_KEY = 'dest'
+SRC_KEY = 'src'
+ARCHIVE_KEY = 'archive'
+COMPRESS_KEY = 'compress'
+ENCRYPT_KEY = 'encrypt'
+DEFAULTS = {
+    ARCHIVE_KEY: 'no',
+    COMPRESS_KEY: 'no',
+    ENCRYPT_KEY: 'no',
+}
+
+def archive_path(dest, src, excludes=[]):
+    assert dest and not os.path.isdir(dest) and dest.endswith('.tar')
+    assert src and os.path.exists(src)
+    cmd = ['tar']
+    cmd.append('--create')
+    if excludes:
+        for exclude in excludes:
+            cmd.append('--exclude=%s' % (exclude))
+    cmd.append('--file')
+    cmd.append(dest)
+    cmd.append(src)
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError as cpe:
+        raise OSError('tar command "%s" exitted with "%s"' %
+                      (cpe.cmd, cpe.output))
+
+def unarchive_path(dest, src):
+    assert dest and os.path.isdir(dest)
+    assert src and os.path.isfile(src) and src.endswith('.tar')
+    cmd = ['tar']
+    cmd.append('--extract')
+    cmd.append('--file')
+    cmd.append(src)
+    cmd.append(dest)
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError as cpe:
+        raise OSError('tar command "%s" exitted with "%s"' %
+                      (cpe.cmd, cpe.output))
+
+def compress_path(src):
+    assert src and os.path.exists(src)
+    cmd = ['xz']
+    cmd.append('--compress')
+    cmd.append(src)
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError as cpe:
+        raise OSError('xz command "%s" exitted with "%s"' %
+                      (cpe.cmd, cpe.output))
+
+def uncompress_path(src):
+    assert src and os.path.isfile(src) and src.endswith('.xz')
+    cmd = ['xz']
+    cmd.append('--decompress')
+    cmd.append(src)
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError as cpe:
+        raise OSError('xz command "%s" exitted with "%s"' %
+                      (cpe.cmd, cpe.output))
+
+def encrypt_path(dest, src):
+    assert dest and not os.path.isdir(dest) and dest.endswith('.gpg')
+    assert src and os.path.isfile(src)
+    cmd = ['gpg']
+    cmd.append('--default-recipient-self')
+    cmd.append('--output')
+    cmd.append(dest)
+    cmd.append('--encrypt')
+    cmd.append(src)
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError as cpe:
+        raise OSError('gpg command "%s" exitted with "%s"' %
+                      (cpe.cmd, cpe.output))
+
+def unencrypt_path(dest, src):
+    assert dest and not os.path.isdir(dest)
+    assert src and os.path.isfile(src) and src.endswith('.gpg')
+    cmd = ['gpg']
+    cmd.append('--default-recipient-self')
+    cmd.append('--output')
+    cmd.append(dest)
+    cmd.append('--decrypt')
+    cmd.append(src)
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError as cpe:
+        raise OSError('gpg command "%s" exitted with "%s"' %
+                      (cpe.cmd, cpe.output))
+
+def copy_path(dest, src, excludes=[], use_rsync=True, verbose=False):
+    assert dest and src
+    if not use_rsync:
+        raise NotImplementedError('Non-rsync transport not yet implemented.')
+    cmd = ['rsync']
+    cmd.append('-v' if verbose else '-q') # Set verbosity
+    cmd.append('--archive')         # Preserve metadata (-a)
+    cmd.append('--delete')          # Delete extra files
+    cmd.append('--compress')        # Compress xfer data (-z)
+    cmd.append('--protect-args')    # Preserve whitespace (-s)
+    if excludes:
+        for exclude in excludes:
+            cmd.append('--filter=exclude_%s' % (exclude))
+    cmd.append(src)
+    cmd.append(dest)
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError as cpe:
+        raise OSError('rsync command "%s" exitted with "%s"' %
+                      (cpe.cmd, cpe.output))
+
+def process_section(config, section):
+    # Extract fields from the section (and write-back any missing).
+    if not config.has_option(section, SRC_KEY):
+        config.set(section, SRC_KEY, section)
+    src = config.get(section, SRC_KEY)
+    dest = config.get(section, DEST_KEY)
+    archive = config.getboolean(section, ARCHIVE_KEY)
+    compress = config.getboolean(section, COMPRESS_KEY)
+    encrypt = config.getboolean(section, ENCRYPT_KEY)
+    print dest, src, archive, compress, encrypt
 
 def main():
     """Main method."""
@@ -40,18 +167,24 @@ def main():
                                      'designed to be lightly configurable, '
                                      'simple and unobtrusive. Useful for '
                                      'maintaining lightweight backups.')
-    parser.add_argument('-c', '--config',
-                        type=str, nargs='?',
-                        default='~/.backup_config', const='~/.backup_config',
+    parser.add_argument('--config', metavar='PATH',
+                        type=str, default='~/.backup_config',
                         help='The location of the backup config file to read. '
                         'Defaults to %(default)s')
-    parser.add_argument('-r', '--restore',
+    parser.add_argument('--restore',
                         action='store_true', default=False,
                         help='Reverse the backup process to restore the local '
                         'file system from the backups at the given locations.')
+    parser.add_argument('--retention', metavar='N',
+                        type=int, default=1,
+                        help='The number of copies of the backup to retain. '
+                        'When this is exceeded, the oldest will be '
+                        'removed. Defaults to %(default)s.')
+    parser.add_argument('-v', '--version',
+                        action='version', version='%(prog)s ' + __version__)
     args = parser.parse_args()
 
-    # Do it.
+    # Process command line.
     if args.restore:
         raise NotImplementedError('Restore functionality is not implemented.')
 
@@ -59,11 +192,13 @@ def main():
     args.config = os.path.expanduser(args.config)
     if not os.path.isfile(args.config):
         raise OSError('Config file "%s" does not exist.' % (args.config))
-    config = ConfigParser.SafeConfigParser()
+    config = ConfigParser.SafeConfigParser(DEFAULTS)
     with open(args.config) as config_file:
         config.readfp(config_file)
 
-    # TODO
+    # Perform the backup.
+    for section in config.sections():
+        process_section(config, section)
 
 # Entry point.
 if __name__ == "__main__":

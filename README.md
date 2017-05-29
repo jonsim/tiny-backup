@@ -24,11 +24,17 @@ as described in the configuration file.
 
 ## Dependencies
 
-- rsync (tested with 3.1.1)
-- GNU tar (tested with 1.28) (only needed if bundling is required)
-- GPG (tested with 1.4.20) and configured keys (only needed if encryption is
-  required)
-All of the above are expected to be on the `$PATH`.
+- rsync &ge; 3.0.0
+- tar (tested with 1.28) (only needed if archiving is required)
+- xz (tested with 5.1.0) (only needed if compression is required)
+- GPG (tested with 1.4.20) (only needed if encryption is required) (it is
+  assumed keys are correctly configured)
+
+All of the above are expected to be on the `$PATH`. NB: No explicit effort is
+made to ensure the output, particularly of GPG, is of a particular format. It is
+assumed the machine on which any necessary unencryption will be performed has
+a compatible GPG implementation. This is an area for possible future
+improvement.
 
 
 ## License
@@ -43,7 +49,21 @@ intact.
 
 # Documentation
 
-TODO
+It is probably most useful to run `backup` on the system from which the backups
+originate, typically as a cron job (i.e. a 'push' setup). In this case the
+config file would contain references in `src` fields to local paths and in
+`dest` fields either to a remote host or local directory (which may or may not
+be a remote mount).
+
+It is also possible, to run `backup` on the remote host on which the backups
+will end up (i.e. a 'pull' setup). This is most useful when the machine from
+which the backups originate is not Unix-based or lacks a cron implementation. In
+this case the config file would contain references in `src` fields to a remote
+host or mount and in `dest` fields to a local directory.
+
+The `src` and `dest` fields are passed verbatim to the rsync client. As a result
+it is possible to communicate with an rsync daemon if necessary (i.e. no remote
+shell) as well as using other more advanced features.
 
 
 # Remaining work
