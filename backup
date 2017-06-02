@@ -29,8 +29,11 @@ Maintained at https://github.com/jonsim/tiny-backup
 """
 import argparse     # ArgumentParser
 import ConfigParser # SafeConfigParser
-import os.path      # isfile, expanduser
+import os           # makedirs
+import os.path      # exists, isfile, isdir, expanduser
 import subprocess   # check_output
+import shutil       # rmtree
+import tempfile     # mkdtemp
 
 __version__ = '1.0.0'
 
@@ -45,11 +48,26 @@ DEFAULTS = {
     ENCRYPT_KEY: 'no',
 }
 
-def archive_path(dest, src, excludes=[]):
+_TEMPDIR = None
+
+def make_tempdir():
+    """Retrieves a temporary directory, creating it if necessary.
+
+    Returns:    string path to a temporary directory.
+    """
+    global _TEMPDIR
+    if not _TEMPDIR:
+        _TEMPDIR = tempfile.mkdtemp()
+    return _TEMPDIR
+
+def archive_path(dest, src, excludes=[], verbose=False):
     assert dest and not os.path.isdir(dest) and dest.endswith('.tar')
     assert src and os.path.exists(src)
     cmd = ['tar']
     cmd.append('--create')
+    if verbose:
+        print '\narchive_path(%s, %s)' % (dest, src)
+        cmd.append('-v')
     if excludes:
         for exclude in excludes:
             cmd.append('--exclude=%s' % (exclude))
@@ -62,11 +80,14 @@ def archive_path(dest, src, excludes=[]):
         raise OSError('tar command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
 
-def unarchive_path(dest, src):
+def unarchive_path(dest, src, verbose=False):
     assert dest and os.path.isdir(dest)
     assert src and os.path.isfile(src) and src.endswith('.tar')
     cmd = ['tar']
     cmd.append('--extract')
+    if verbose:
+        print '\nunarchive_path(%s, %s)' % (dest, src)
+        cmd.append('-v')
     cmd.append('--file')
     cmd.append(src)
     cmd.append(dest)
@@ -76,32 +97,49 @@ def unarchive_path(dest, src):
         raise OSError('tar command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
 
-def compress_path(src):
+def compress_path(dest, src, verbose=False):
     assert src and os.path.exists(src)
     cmd = ['xz']
+    if verbose:
+        print '\ncompress_path(%s, %s)' % (dest, src)
+        cmd.append('-v')
+    cmd.append('--keep')
+    cmd.append('--stdout')
     cmd.append('--compress')
     cmd.append(src)
     try:
-        subprocess.check_call(cmd)
+        dest_file = open(dest, 'w')
+        subprocess.check_call(cmd, stdout=dest_file)
+        dest_file.close()
     except subprocess.CalledProcessError as cpe:
         raise OSError('xz command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
 
-def uncompress_path(src):
+def uncompress_path(dest, src, verbose=False):
     assert src and os.path.isfile(src) and src.endswith('.xz')
     cmd = ['xz']
+    if verbose:
+        print '\nuncompress_path(%s, %s)' % (dest, src)
+        cmd.append('-v')
+    cmd.append('--keep')
+    cmd.append('--stdout')
     cmd.append('--decompress')
     cmd.append(src)
     try:
-        subprocess.check_call(cmd)
+        dest_file = open(dest, 'w')
+        subprocess.check_call(cmd, stdout=dest_file)
+        dest_file.close()
     except subprocess.CalledProcessError as cpe:
         raise OSError('xz command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
 
-def encrypt_path(dest, src):
+def encrypt_path(dest, src, verbose=False):
     assert dest and not os.path.isdir(dest) and dest.endswith('.gpg')
     assert src and os.path.isfile(src)
     cmd = ['gpg']
+    if verbose:
+        print '\nencrypt_path(%s, %s)' % (dest, src)
+        cmd.append('-v')
     cmd.append('--default-recipient-self')
     cmd.append('--output')
     cmd.append(dest)
@@ -113,10 +151,13 @@ def encrypt_path(dest, src):
         raise OSError('gpg command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
 
-def unencrypt_path(dest, src):
+def unencrypt_path(dest, src, verbose=False):
     assert dest and not os.path.isdir(dest)
     assert src and os.path.isfile(src) and src.endswith('.gpg')
     cmd = ['gpg']
+    if verbose:
+        print '\nunencrypt_path(%s, %s)' % (dest, src)
+        cmd.append('-v')
     cmd.append('--default-recipient-self')
     cmd.append('--output')
     cmd.append(dest)
@@ -133,7 +174,9 @@ def copy_path(dest, src, excludes=[], use_rsync=True, verbose=False):
     if not use_rsync:
         raise NotImplementedError('Non-rsync transport not yet implemented.')
     cmd = ['rsync']
-    cmd.append('-v' if verbose else '-q') # Set verbosity
+    if verbose:
+        print '\ncopy_path(%s, %s)' % (dest, src)
+        cmd.append('-v')            # Set verbosity (-v)
     cmd.append('--archive')         # Preserve metadata (-a)
     cmd.append('--delete')          # Delete extra files
     cmd.append('--compress')        # Compress xfer data (-z)
@@ -149,16 +192,59 @@ def copy_path(dest, src, excludes=[], use_rsync=True, verbose=False):
         raise OSError('rsync command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
 
-def process_section(config, section):
+def resolve_relative_path(path, config_path):
+    if os.path.isabs(path):
+        return path
+    return os.path.join(os.path.dirname(config_path), path)
+
+def get_pipeline_stage_output(pipeline_dest, src, end_of_pipeline, extension):
+    # If not the end of the pipeline make a temp location for the output.
+    return os.path.join(pipeline_dest if end_of_pipeline else make_tempdir(),
+        '%s.%s' % (os.path.basename(src), extension))
+
+def process_section(config, section, config_path, verbose=False):
     # Extract fields from the section (and write-back any missing).
     if not config.has_option(section, SRC_KEY):
         config.set(section, SRC_KEY, section)
-    src = config.get(section, SRC_KEY)
-    dest = config.get(section, DEST_KEY)
+    pipeline_src = resolve_relative_path(config.get(section, SRC_KEY), config_path)
+    pipeline_dest = resolve_relative_path(config.get(section, DEST_KEY), config_path)
     archive = config.getboolean(section, ARCHIVE_KEY)
     compress = config.getboolean(section, COMPRESS_KEY)
     encrypt = config.getboolean(section, ENCRYPT_KEY)
-    print dest, src, archive, compress, encrypt
+    #print dest, src, archive, compress, encrypt
+
+    # Validate args.
+    if not os.path.exists(pipeline_src):
+        raise Exception("Source path %s does not exist." % (pipeline_src))
+    if not os.path.exists(pipeline_dest):
+        os.makedirs(pipeline_dest)
+    if (compress or encrypt) and os.path.isdir(pipeline_src):
+        archive = True
+
+    # Perform backup.
+    if archive or compress or encrypt:
+        # Perform pipeline.
+        stage_src = pipeline_src
+        if archive:
+            stage_dest = get_pipeline_stage_output(pipeline_dest, stage_src,
+                                                   not (compress or encrypt), 'tar')
+            archive_path(stage_dest, stage_src, verbose=verbose)
+            stage_src = stage_dest
+
+        if compress:
+            stage_dest = get_pipeline_stage_output(pipeline_dest, stage_src,
+                                                   not encrypt, 'xz')
+            compress_path(stage_dest, stage_src, verbose=verbose)
+            stage_src = stage_dest
+
+        if encrypt:
+            stage_dest = get_pipeline_stage_output(pipeline_dest, stage_src,
+                                                   True, 'gpg')
+            encrypt_path(stage_dest, stage_src, verbose=verbose)
+            stage_src = stage_dest
+    else:
+        # Perform copy.
+        copy_path(pipeline_dest, pipeline_src, verbose=verbose)
 
 def main():
     """Main method."""
@@ -180,13 +266,18 @@ def main():
                         help='The number of copies of the backup to retain. '
                         'When this is exceeded, the oldest will be '
                         'removed. Defaults to %(default)s.')
-    parser.add_argument('-v', '--version',
+    parser.add_argument('--verbose',
+                        action='store_true', default=False,
+                        help='Print additional output.')
+    parser.add_argument('--version',
                         action='version', version='%(prog)s ' + __version__)
     args = parser.parse_args()
 
     # Process command line.
     if args.restore:
         raise NotImplementedError('Restore functionality is not implemented.')
+    if args.retention != 1:
+        raise NotImplementedError('Retention functionality is not implemented')
 
     # Parse the config file.
     args.config = os.path.expanduser(args.config)
@@ -197,8 +288,12 @@ def main():
         config.readfp(config_file)
 
     # Perform the backup.
-    for section in config.sections():
-        process_section(config, section)
+    try:
+        for section in config.sections():
+            process_section(config, section, args.config, args.verbose)
+    finally:
+        if _TEMPDIR:
+            shutil.rmtree(_TEMPDIR)
 
 # Entry point.
 if __name__ == "__main__":
