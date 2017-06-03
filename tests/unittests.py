@@ -117,6 +117,8 @@ def _get_dir_md5(path):
     import hashlib
     hash_md5 = hashlib.md5()
     for root, dirs, files in os.walk(path):
+        dirs.sort()
+        files.sort()
         rel_root = '.' + root[len(path):]
         hash_md5.update(rel_root)
         for directory in dirs:
