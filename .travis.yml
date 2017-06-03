@@ -7,6 +7,6 @@ install:
   - pip install coveralls
 # Run the unit test script.
 script:
-  - coverage run --source=backup backup_unittests.py
+  - coverage run --source=backup tests/test.py
 after_success:
   - coveralls

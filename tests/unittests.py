@@ -29,8 +29,11 @@ Maintained at https://github.com/jonsim/tiny-backup
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
+# To avoid having to make the parent directory a module just amend PYTHONPATH.
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
 import backup
 
 def _create_ascii_file(path, kb_size=16):
@@ -305,6 +308,3 @@ class TestBackupMethods(unittest.TestCase):
         self._assert_file_processing(backup.encrypt_path, backup.unencrypt_path,
                                      self._FILE_TYPE_GPG, 'testfile.bin',
                                      'encrypted.gpg', 'testfile.bin', False)
-
-if __name__ == '__main__':
-    unittest.main()
