@@ -10,6 +10,8 @@
 
 [![Build Status](https://travis-ci.org/jonsim/tiny-backup.svg?branch=master)](https://travis-ci.org/jonsim/tiny-backup)
 
+[![Coverage Status](https://coveralls.io/repos/github/jonsim/tiny-backup/badge.svg?branch=master)](https://coveralls.io/github/jonsim/tiny-backup?branch=master)
+
 A micro backup manager, designed to be simple, unobtrusive and configurable.
 Designed for maintaining and enforcing lightweight backup strategies.
 
