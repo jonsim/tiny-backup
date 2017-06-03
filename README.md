@@ -24,6 +24,7 @@ as described in the configuration file.
 
 ## Dependencies
 
+- Python &ge; 2.6 (&ge; 2.7 for running the tests)
 - rsync &ge; 3.0.0
 - tar (tested with 1.28) (only needed if archiving is required)
 - xz (tested with 5.1.0) (only needed if compression is required)
@@ -42,20 +43,20 @@ improvement.
 All files are licensed under
 [the MIT license](https://github.com/jonsim/tiny-backup/blob/master/LICENSE).
 
-Only the file `backup` makes up the functional part of the project and may be
+Only the file `backup.py` makes up the functional part of the project and may be
 distributed alone providing the copyright &amp; license header in it remains
 intact.
 
 
 # Documentation
 
-It is probably most useful to run `backup` on the system from which the backups
-originate, typically as a cron job (i.e. a 'push' setup). In this case the
-config file would contain references in `src` fields to local paths and in
+It is probably most useful to run `backup.py` on the system from which the
+backups originate, typically as a cron job (i.e. a 'push' setup). In this case
+the config file would contain references in `src` fields to local paths and in
 `dest` fields either to a remote host or local directory (which may or may not
 be a remote mount).
 
-It is also possible, to run `backup` on the remote host on which the backups
+It is also possible, to run `backup.py` on the remote host on which the backups
 will end up (i.e. a 'pull' setup). This is most useful when the machine from
 which the backups originate is not Unix-based or lacks a cron implementation. In
 this case the config file would contain references in `src` fields to a remote

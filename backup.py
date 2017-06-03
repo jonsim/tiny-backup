@@ -73,7 +73,9 @@ def archive_path(dest, src, excludes=[], verbose=False):
             cmd.append('--exclude=%s' % (exclude))
     cmd.append('--file')
     cmd.append(dest)
-    cmd.append(src)
+    cmd.append('--directory')
+    cmd.append(os.path.dirname(src))
+    cmd.append(os.path.basename(src))
     try:
         subprocess.check_call(cmd)
     except subprocess.CalledProcessError as cpe:
@@ -90,6 +92,7 @@ def unarchive_path(dest, src, verbose=False):
         cmd.append('-v')
     cmd.append('--file')
     cmd.append(src)
+    cmd.append('--directory')
     cmd.append(dest)
     try:
         subprocess.check_call(cmd)
