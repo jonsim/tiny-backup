@@ -185,6 +185,8 @@ def copy_path(dest, src, excludes=[], verbose=False):
     if excludes:
         for exclude in excludes:
             cmd.append('--filter=exclude_%s' % (exclude))
+    if os.path.isdir(src) and not src.endswith('/'):
+        src += '/'
     cmd.append(src)
     cmd.append(dest)
     try:
