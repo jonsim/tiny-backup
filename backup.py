@@ -216,10 +216,8 @@ def resolve_relative_path(path, config_path):
         return path
     return os.path.join(os.path.dirname(config_path), path)
 
-def get_pipeline_stage_output(pipeline_dest, src, end_of_pipeline, extension):
-    # If not the end of the pipeline make a temp location for the output.
-    return os.path.join(pipeline_dest if end_of_pipeline else make_tempdir(),
-        '%s.%s' % (os.path.basename(src), extension))
+def get_out_filename(dirname, src, extension):
+    return os.path.join(dirname, '%s.%s' % (os.path.basename(src), extension))
 
 def process_section(config, section, config_path, verbose=False):
     # Extract fields from the section (and write-back any missing).
@@ -230,7 +228,6 @@ def process_section(config, section, config_path, verbose=False):
     archive = config.getboolean(section, ARCHIVE_KEY)
     compress = config.getboolean(section, COMPRESS_KEY)
     encrypt = config.getboolean(section, ENCRYPT_KEY)
-    #print dest, src, archive, compress, encrypt
 
     # Validate args.
     if not os.path.exists(pipeline_src):
@@ -240,30 +237,28 @@ def process_section(config, section, config_path, verbose=False):
     if (compress or encrypt) and os.path.isdir(pipeline_src):
         archive = True
 
-    # Perform backup.
+    # Perform backup pipeline.
+    stage_src = pipeline_src
     if archive or compress or encrypt:
-        # Perform pipeline.
-        stage_src = pipeline_src
+        tempdir = make_tempdir()
+
         if archive:
-            stage_dest = get_pipeline_stage_output(pipeline_dest, stage_src,
-                                                   not (compress or encrypt), 'tar')
+            stage_dest = get_out_filename(tempdir, stage_src, 'tar')
             archive_path(stage_dest, stage_src, verbose=verbose)
             stage_src = stage_dest
 
         if compress:
-            stage_dest = get_pipeline_stage_output(pipeline_dest, stage_src,
-                                                   not encrypt, 'xz')
+            stage_dest = get_out_filename(tempdir, stage_src, 'xz')
             compress_path(stage_dest, stage_src, verbose=verbose)
             stage_src = stage_dest
 
         if encrypt:
-            stage_dest = get_pipeline_stage_output(pipeline_dest, stage_src,
-                                                   True, 'gpg')
+            stage_dest = get_out_filename(tempdir, stage_src, 'gpg')
             encrypt_path(stage_dest, stage_src, verbose=verbose)
             stage_src = stage_dest
-    else:
-        # Perform copy.
-        copy_path(pipeline_dest, pipeline_src, verbose=verbose)
+
+    # Perform copy.
+    copy_path(pipeline_dest, stage_src, verbose=verbose)
 
 def main():
     """Main method."""

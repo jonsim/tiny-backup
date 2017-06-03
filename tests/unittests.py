@@ -368,3 +368,25 @@ class TestBackupMethods(unittest.TestCase):
                                     self._FILE_TYPE_DIR, 'struct',
                                     'copied', 'struct', processed_is_dir=True,
                                     processed_is_same=True)
+
+    def test_resolve_relative_path(self):
+        """Test backup.resolve_relative_path"""
+        root_path = '/root/config.cfg'
+        abs_path = '/some/path'
+        rel_path = 'relative/path'
+        self.assertTrue(os.path.isabs(root_path))
+        self.assertTrue(os.path.isabs(abs_path))
+        self.assertFalse(os.path.isabs(rel_path))
+        self.assertEqual(abs_path,
+                         backup.resolve_relative_path(abs_path, root_path))
+        self.assertEqual('/root/relative/path',
+                         backup.resolve_relative_path(rel_path, root_path))
+
+    def test_get_out_filename(self):
+        """Test backup.get_out_filename"""
+        base_dir = '/root/dir'
+        src_file = '/some/filename'
+        out_file1 = backup.get_out_filename(base_dir, src_file, 'txt')
+        out_file2 = backup.get_out_filename(src_file, base_dir, 'x')
+        self.assertEquals('/root/dir/filename.txt', out_file1)
+        self.assertEquals('/some/filename/dir.x', out_file2)
