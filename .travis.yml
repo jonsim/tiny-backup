@@ -1,5 +1,7 @@
 language: python
 python:
   - "2.7"
-
+# No dependencies beyond vanilla Python 2.7.
+install: true
+# Single unit test script.
 script: ./backup_unittests.py
