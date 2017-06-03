@@ -8,13 +8,13 @@
 
 # tiny-backup
 
+[![Build Status](https://travis-ci.org/jonsim/tiny-backup.svg?branch=master)](https://travis-ci.org/jonsim/tiny-backup)
+
 A micro backup manager, designed to be simple, unobtrusive and configurable.
 Designed for maintaining and enforcing lightweight backup strategies.
 
 **NB: tiny-backup is currently under development. See the
 [Remaining work](#remaining-work) section for current status.**
-
-hello
 
 tiny-backup is little more than a glorified wrapper around rsync and tar/pgp
 as described in the configuration file.
