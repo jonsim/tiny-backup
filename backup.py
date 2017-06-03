@@ -172,10 +172,8 @@ def unencrypt_path(dest, src, verbose=False):
         raise OSError('gpg command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
 
-def copy_path(dest, src, excludes=[], use_rsync=True, verbose=False):
+def copy_path(dest, src, excludes=[], verbose=False):
     assert dest and src
-    if not use_rsync:
-        raise NotImplementedError('Non-rsync transport not yet implemented.')
     cmd = ['rsync']
     if verbose:
         print '\ncopy_path(%s, %s)' % (dest, src)

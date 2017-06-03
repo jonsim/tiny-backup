@@ -142,211 +142,169 @@ class TestBackupMethods(unittest.TestCase):
     _FILE_TYPE_DIR = 'directory'
     _FILE_TYPE_TAR = 'POSIX tar archive (GNU)'
     _FILE_TYPE_XZ = 'XZ compressed data'
+    _FILE_TYPE_GPG = 'PGP RSA encrypted session key'
 
-    def test_archive_path_ascii_file(self):
-        """Test the archive methods with an ASCII file path argument."""
+    def _assert_file_processing(self, processing_func, unprocessing_func,
+                                processed_file_type, input_filename,
+                                processed_filename, output_filename, is_ascii,
+                                output_is_dir=False):
         try:
             tempdir = tempfile.mkdtemp()
-            out_dir = os.path.join(tempdir, 'extract')
+            out_dir = os.path.join(tempdir, 'output')
             os.makedirs(out_dir)
 
-            test_input = os.path.join(tempdir, 'testfile.txt')
-            test_archive = os.path.join(tempdir, 'testfile.tar')
-            test_output = os.path.join(out_dir, 'testfile.txt')
+            test_input = os.path.join(tempdir, input_filename)
+            test_processed = os.path.join(tempdir, processed_filename)
+            test_output = os.path.join(out_dir, output_filename)
 
-            # Create an archive from an ASCII file.
-            _create_ascii_file(test_input)
+            # Create the file.
+            if is_ascii:
+                _create_ascii_file(test_input)
+                input_file_type = self._FILE_TYPE_ASCII
+            else:
+                _create_binary_file(test_input)
+                input_file_type = self._FILE_TYPE_BINARY
+
+            # Assert the starting state looks as we expect.
             self.assertTrue(os.path.isfile(test_input))
-            self.assertFalse(os.path.exists(test_archive))
-            self.assertEqual(self._FILE_TYPE_ASCII, _get_file_type(test_input))
+            self.assertFalse(os.path.exists(test_processed))
+            self.assertFalse(os.path.exists(test_output))
+            self.assertEqual(input_file_type, _get_file_type(test_input))
             test_input_hash = _get_file_md5(test_input)
-            backup.archive_path(test_archive, test_input)
-            self.assertTrue(os.path.isfile(test_input))
-            self.assertTrue(os.path.isfile(test_archive))
-            self.assertEqual(self._FILE_TYPE_ASCII, _get_file_type(test_input))
-            self.assertEqual(test_input_hash, _get_file_md5(test_input))
-            self.assertEqual(self._FILE_TYPE_TAR, _get_file_type(test_archive))
-            test_archive_hash = _get_file_md5(test_archive)
-            self.assertEqual(32, len(test_archive_hash))
-            self.assertNotEqual(test_input_hash, test_archive_hash)
 
-            # Un-archive the ASCII file.
-            backup.unarchive_path(out_dir, test_archive)
-            self.assertTrue(os.path.isfile(test_archive))
+            # Perform the processing operation on the file.
+            processing_func(test_processed, test_input)
+
+            # Assert the processed state looks as we expect.
+            self.assertTrue(os.path.isfile(test_input))
+            self.assertTrue(os.path.isfile(test_processed))
+            self.assertFalse(os.path.exists(test_output))
+            self.assertEqual(input_file_type, _get_file_type(test_input))
+            self.assertEqual(test_input_hash, _get_file_md5(test_input))
+            self.assertEqual(processed_file_type, _get_file_type(test_processed))
+            test_processed_hash = _get_file_md5(test_processed)
+            self.assertEqual(32, len(test_processed_hash))
+            self.assertNotEqual(test_input_hash, test_processed_hash)
+
+            # Delete the file (so we can check it doesn't get recreated).
+            os.remove(test_input)
+            self.assertFalse(os.path.exists(test_input))
+
+            # Perform the reverse processing operation on the file.
+            unprocessing_func(out_dir if output_is_dir else test_output,
+                              test_processed)
+
+            # Assert the unprocessed state looks as we expect.
+            self.assertFalse(os.path.exists(test_input))
+            self.assertTrue(os.path.isfile(test_processed))
             self.assertTrue(os.path.isfile(test_output))
-            self.assertEqual(self._FILE_TYPE_ASCII, _get_file_type(test_output))
+            self.assertEqual(input_file_type, _get_file_type(test_output))
             self.assertEqual(test_input_hash, _get_file_md5(test_output))
-            self.assertEqual(self._FILE_TYPE_TAR, _get_file_type(test_archive))
-            self.assertEqual(test_archive_hash, _get_file_md5(test_archive))
+            self.assertEqual(processed_file_type, _get_file_type(test_processed))
+            self.assertEqual(test_processed_hash, _get_file_md5(test_processed))
 
         finally:
             shutil.rmtree(tempdir)
 
-    def test_archive_path_binary_file(self):
-        """Test the archive methods with a binary file path argument."""
+    def _assert_dir_processing(self, processing_func, unprocessing_func,
+                               processed_file_type, input_dirname,
+                               processed_dirname, output_dirname,
+                               output_is_dir=False):
         try:
             tempdir = tempfile.mkdtemp()
-            out_dir = os.path.join(tempdir, 'extract')
+            out_dir = os.path.join(tempdir, 'output')
             os.makedirs(out_dir)
 
-            test_input = os.path.join(tempdir, 'testfile.bin')
-            test_archive = os.path.join(tempdir, 'binary_archive.tar')
-            test_output = os.path.join(out_dir, 'testfile.bin')
+            test_input = os.path.join(tempdir, input_dirname)
+            test_processed = os.path.join(tempdir, processed_dirname)
+            test_output = os.path.join(out_dir, output_dirname)
 
-            # Create an archive from a binary file.
-            _create_binary_file(test_input)
-            self.assertTrue(os.path.isfile(test_input))
-            self.assertFalse(os.path.exists(test_archive))
-            self.assertEqual(self._FILE_TYPE_BINARY, _get_file_type(test_input))
-            test_input_hash = _get_file_md5(test_input)
-            backup.archive_path(test_archive, test_input)
-            self.assertTrue(os.path.isfile(test_input))
-            self.assertTrue(os.path.isfile(test_archive))
-            self.assertEqual(self._FILE_TYPE_BINARY, _get_file_type(test_input))
-            self.assertEqual(test_input_hash, _get_file_md5(test_input))
-            self.assertEqual(self._FILE_TYPE_TAR, _get_file_type(test_archive))
-            test_archive_hash = _get_file_md5(test_archive)
-            self.assertEqual(32, len(test_archive_hash))
-            self.assertNotEqual(test_input_hash, test_archive_hash)
-
-            # Un-archive the binary file.
-            backup.unarchive_path(out_dir, test_archive)
-            self.assertTrue(os.path.isfile(test_archive))
-            self.assertTrue(os.path.isfile(test_output))
-            self.assertEqual(self._FILE_TYPE_BINARY, _get_file_type(test_output))
-            self.assertEqual(test_input_hash, _get_file_md5(test_output))
-            self.assertEqual(self._FILE_TYPE_TAR, _get_file_type(test_archive))
-            self.assertEqual(test_archive_hash, _get_file_md5(test_archive))
-
-        finally:
-            shutil.rmtree(tempdir)
-
-    def test_archive_path_directory(self):
-        """Test the archive methods with a directory path argument."""
-        try:
-            tempdir = tempfile.mkdtemp()
-            out_dir = os.path.join(tempdir, 'extract')
-            os.makedirs(out_dir)
-
-            test_input = os.path.join(tempdir, 'struct')
-            test_archive = os.path.join(tempdir, 'archive.tar')
-            test_output = os.path.join(out_dir, 'struct')
-
-            # Create an archive of the structure.
+            # Create the structure.
             _create_test_structure(test_input)
+
+            # Assert the starting state looks as we expect.
             self.assertTrue(os.path.isdir(test_input))
-            self.assertFalse(os.path.exists(test_archive))
+            self.assertFalse(os.path.exists(test_processed))
+            self.assertFalse(os.path.exists(test_output))
             self.assertEqual(self._FILE_TYPE_DIR, _get_file_type(test_input))
             test_input_hash = _get_dir_md5(test_input)
-            backup.archive_path(test_archive, test_input)
+
+            # Perform the processing operation on the directory.
+            processing_func(test_processed, test_input)
+
+            # Assert the processed state looks as we expect.
             self.assertTrue(os.path.isdir(test_input))
-            self.assertTrue(os.path.isfile(test_archive))
+            self.assertTrue(os.path.isfile(test_processed))
+            self.assertFalse(os.path.exists(test_output))
             self.assertEqual(self._FILE_TYPE_DIR, _get_file_type(test_input))
             self.assertEqual(test_input_hash, _get_dir_md5(test_input))
-            self.assertEqual(self._FILE_TYPE_TAR, _get_file_type(test_archive))
-            test_archive_hash = _get_file_md5(test_archive)
-            self.assertEqual(32, len(test_archive_hash))
+            self.assertEqual(processed_file_type, _get_file_type(test_processed))
+            test_processed_hash = _get_file_md5(test_processed)
+            self.assertEqual(32, len(test_processed_hash))
+            self.assertNotEqual(test_input_hash, test_processed_hash)
 
-            # Un-archive the structure.
-            backup.unarchive_path(out_dir, test_archive)
-            self.assertTrue(os.path.isfile(test_archive))
-            self.assertTrue(os.path.isdir(test_input))
+            # Delete the struct (so we can check it doesn't get recreated).
+            shutil.rmtree(test_input)
+            self.assertFalse(os.path.exists(test_input))
+
+            # Perform the reverse processing operation on the file.
+            unprocessing_func(out_dir if output_is_dir else test_output,
+                              test_processed)
+
+            # Assert the unprocessed state looks as we expect.
+            self.assertFalse(os.path.exists(test_input))
+            self.assertTrue(os.path.isfile(test_processed))
             self.assertTrue(os.path.isdir(test_output))
             self.assertEqual(self._FILE_TYPE_DIR, _get_file_type(test_output))
             self.assertEqual(test_input_hash, _get_dir_md5(test_output))
-            self.assertEqual(self._FILE_TYPE_TAR, _get_file_type(test_archive))
-            self.assertEqual(test_archive_hash, _get_file_md5(test_archive))
+            self.assertEqual(processed_file_type, _get_file_type(test_processed))
+            self.assertEqual(test_processed_hash, _get_file_md5(test_processed))
 
         finally:
             shutil.rmtree(tempdir)
+
+
+    def test_archive_path_ascii_file(self):
+        """Test the archive methods with an ASCII file path argument."""
+        self._assert_file_processing(backup.archive_path, backup.unarchive_path,
+                                     self._FILE_TYPE_TAR, 'testfile.txt',
+                                     'testfile.tar', 'testfile.txt', True, True)
+
+    def test_archive_path_binary_file(self):
+        """Test the archive methods with a binary file path argument."""
+        self._assert_file_processing(backup.archive_path, backup.unarchive_path,
+                                     self._FILE_TYPE_TAR, 'testfile.bin',
+                                     'bin.tar', 'testfile.bin', False, True)
+
+    def test_archive_path_directory(self):
+        """Test the archive methods with a directory path argument."""
+        self._assert_dir_processing(backup.archive_path, backup.unarchive_path,
+                                    self._FILE_TYPE_TAR, 'struct',
+                                    'dir.tar', 'struct', True)
 
     def test_compress_path_ascii_file(self):
         """Test the compress methods with an ASCII file path argument."""
-        try:
-            tempdir = tempfile.mkdtemp()
-            out_dir = os.path.join(tempdir, 'extract')
-            os.makedirs(out_dir)
-
-            test_input = os.path.join(tempdir, 'testfile.txt')
-            test_compressed = os.path.join(tempdir, 'testfile.xz')
-            test_output = os.path.join(out_dir, 'testfile.txt')
-
-            # Compress an ASCII file.
-            _create_ascii_file(test_input)
-            self.assertTrue(os.path.isfile(test_input))
-            self.assertFalse(os.path.exists(test_compressed))
-            self.assertEqual(self._FILE_TYPE_ASCII, _get_file_type(test_input))
-            test_input_hash = _get_file_md5(test_input)
-            backup.compress_path(test_compressed, test_input)
-            self.assertTrue(os.path.isfile(test_input))
-            self.assertTrue(os.path.isfile(test_compressed))
-            self.assertEqual(self._FILE_TYPE_ASCII, _get_file_type(test_input))
-            self.assertEqual(test_input_hash, _get_file_md5(test_input))
-            self.assertEqual(self._FILE_TYPE_XZ, _get_file_type(test_compressed))
-            test_compressed_hash = _get_file_md5(test_compressed)
-            self.assertEqual(32, len(test_compressed_hash))
-            self.assertNotEqual(test_input_hash, test_compressed_hash)
-
-            # Delete the ASCII file (so we can check it doesn't get recreated).
-            os.remove(test_input)
-            self.assertFalse(os.path.exists(test_input))
-
-            # Decompress the ASCII file.
-            backup.uncompress_path(test_output, test_compressed)
-            self.assertFalse(os.path.exists(test_input))
-            self.assertTrue(os.path.isfile(test_compressed))
-            self.assertTrue(os.path.isfile(test_output))
-            self.assertEqual(self._FILE_TYPE_ASCII, _get_file_type(test_output))
-            self.assertEqual(test_input_hash, _get_file_md5(test_output))
-            self.assertEqual(self._FILE_TYPE_XZ, _get_file_type(test_compressed))
-            self.assertEqual(test_compressed_hash, _get_file_md5(test_compressed))
-
-        finally:
-            shutil.rmtree(tempdir)
+        self._assert_file_processing(backup.compress_path, backup.uncompress_path,
+                                     self._FILE_TYPE_XZ, 'testfile.txt',
+                                     'testfile.xz', 'testfile.txt', True)
 
     def test_compress_path_binary_file(self):
         """Test the compress methods with a binary file path argument."""
-        try:
-            tempdir = tempfile.mkdtemp()
-            out_dir = os.path.join(tempdir, 'extract')
-            os.makedirs(out_dir)
+        self._assert_file_processing(backup.compress_path, backup.uncompress_path,
+                                     self._FILE_TYPE_XZ, 'testfile.bin',
+                                     'compressed.xz', 'testfile.bin', False)
 
-            test_input = os.path.join(tempdir, 'testfile.bin')
-            test_compressed = os.path.join(tempdir, 'compressed.xz')
-            test_output = os.path.join(out_dir, 'testfile.bin')
+    def xtest_encrypt_path_ascii_file(self):
+        """Test the encrypt methods with an ASCII file path argument."""
+        self._assert_file_processing(backup.encrypt_path, backup.unencrypt_path,
+                                     self._FILE_TYPE_GPG, 'testfile.txt',
+                                     'testfile.gpg', 'testfile.txt', True)
 
-            # Compress a binary file.
-            _create_binary_file(test_input)
-            self.assertTrue(os.path.isfile(test_input))
-            self.assertFalse(os.path.exists(test_compressed))
-            self.assertEqual(self._FILE_TYPE_BINARY, _get_file_type(test_input))
-            test_input_hash = _get_file_md5(test_input)
-            backup.compress_path(test_compressed, test_input)
-            self.assertTrue(os.path.isfile(test_input))
-            self.assertTrue(os.path.isfile(test_compressed))
-            self.assertEqual(self._FILE_TYPE_BINARY, _get_file_type(test_input))
-            self.assertEqual(test_input_hash, _get_file_md5(test_input))
-            self.assertEqual(self._FILE_TYPE_XZ, _get_file_type(test_compressed))
-            test_compressed_hash = _get_file_md5(test_compressed)
-            self.assertEqual(32, len(test_compressed_hash))
-            self.assertNotEqual(test_input_hash, test_compressed_hash)
-
-            # Delete the binary file (so we can check it doesn't get recreated).
-            os.remove(test_input)
-            self.assertFalse(os.path.exists(test_input))
-
-            # Decompress the binary file.
-            backup.uncompress_path(test_output, test_compressed)
-            self.assertFalse(os.path.exists(test_input))
-            self.assertTrue(os.path.isfile(test_compressed))
-            self.assertTrue(os.path.isfile(test_output))
-            self.assertEqual(self._FILE_TYPE_BINARY, _get_file_type(test_output))
-            self.assertEqual(test_input_hash, _get_file_md5(test_output))
-            self.assertEqual(self._FILE_TYPE_XZ, _get_file_type(test_compressed))
-            self.assertEqual(test_compressed_hash, _get_file_md5(test_compressed))
-
-        finally:
-            shutil.rmtree(tempdir)
+    def xtest_encrypt_path_binary_file(self):
+        """Test the encrypt methods with a binary file path argument."""
+        self._assert_file_processing(backup.encrypt_path, backup.unencrypt_path,
+                                     self._FILE_TYPE_GPG, 'testfile.bin',
+                                     'encrypted.gpg', 'testfile.bin', False)
 
 if __name__ == '__main__':
     unittest.main()
