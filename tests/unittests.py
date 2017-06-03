@@ -144,14 +144,15 @@ class TestBackupMethods(unittest.TestCase):
 
     _FILE_TYPE_ASCII = 'ASCII text'
     _FILE_TYPE_BINARY = 'raw G3 data, byte-padded'
+    _FILE_TYPE_DATA = 'data'
     _FILE_TYPE_DIR = 'directory'
-    _FILE_TYPE_TAR = 'POSIX tar archive (GNU)'
-    _FILE_TYPE_XZ = 'XZ compressed data'
     _FILE_TYPE_GPG = 'PGP RSA encrypted session key - keyid: A294AFC5 ' \
                      'A32F6F37 RSA (Encrypt or Sign) 1024b .'
+    _FILE_TYPE_TAR = 'POSIX tar archive (GNU)'
+    _FILE_TYPE_XZ = 'XZ compressed data'
 
     def _assert_file_processing(self, processing_func, unprocessing_func,
-                                processed_file_type, input_filename,
+                                processed_file_types, input_filename,
                                 processed_filename, output_filename, is_ascii,
                                 output_is_dir=False, processed_is_same=False):
         try:
@@ -187,7 +188,7 @@ class TestBackupMethods(unittest.TestCase):
             self.assertFalse(os.path.exists(test_output))
             self.assertEqual(input_file_type, _get_file_type(test_input))
             self.assertEqual(test_input_hash, _get_file_md5(test_input))
-            self.assertEqual(processed_file_type, _get_file_type(test_processed))
+            self.assertIn(_get_file_type(test_processed), processed_file_types)
             test_processed_hash = _get_file_md5(test_processed)
             self.assertEqual(32, len(test_processed_hash))
             if processed_is_same:
@@ -209,14 +210,14 @@ class TestBackupMethods(unittest.TestCase):
             self.assertTrue(os.path.isfile(test_output))
             self.assertEqual(input_file_type, _get_file_type(test_output))
             self.assertEqual(test_input_hash, _get_file_md5(test_output))
-            self.assertEqual(processed_file_type, _get_file_type(test_processed))
+            self.assertIn(_get_file_type(test_processed), processed_file_types)
             self.assertEqual(test_processed_hash, _get_file_md5(test_processed))
 
         finally:
             shutil.rmtree(tempdir)
 
     def _assert_dir_processing(self, processing_func, unprocessing_func,
-                               processed_file_type, input_dirname,
+                               processed_file_types, input_dirname,
                                processed_dirname, output_dirname,
                                output_is_dir=False, processed_is_dir=False,
                                processed_is_same=False):
@@ -251,7 +252,7 @@ class TestBackupMethods(unittest.TestCase):
             self.assertFalse(os.path.exists(test_output))
             self.assertEqual(self._FILE_TYPE_DIR, _get_file_type(test_input))
             self.assertEqual(test_input_hash, _get_dir_md5(test_input))
-            self.assertEqual(processed_file_type, _get_file_type(test_processed))
+            self.assertIn(_get_file_type(test_processed), processed_file_types)
             if processed_is_dir:
                 test_processed_hash = _get_dir_md5(test_processed)
             else:
@@ -279,7 +280,7 @@ class TestBackupMethods(unittest.TestCase):
             self.assertTrue(os.path.isdir(test_output))
             self.assertEqual(self._FILE_TYPE_DIR, _get_file_type(test_output))
             self.assertEqual(test_input_hash, _get_dir_md5(test_output))
-            self.assertEqual(processed_file_type, _get_file_type(test_processed))
+            self.assertIn(_get_file_type(test_processed), processed_file_types)
             if processed_is_dir:
                 self.assertEqual(test_processed_hash, _get_dir_md5(test_processed))
             else:
@@ -292,33 +293,33 @@ class TestBackupMethods(unittest.TestCase):
     def test_archive_path_ascii_file(self):
         """Test the archive methods with an ASCII file path argument."""
         self._assert_file_processing(backup.archive_path, backup.unarchive_path,
-                                     self._FILE_TYPE_TAR, 'testfile.txt',
+                                     [self._FILE_TYPE_TAR], 'testfile.txt',
                                      'testfile.tar', 'testfile.txt', True,
                                      output_is_dir=True)
 
     def test_archive_path_binary_file(self):
         """Test the archive methods with a binary file path argument."""
         self._assert_file_processing(backup.archive_path, backup.unarchive_path,
-                                     self._FILE_TYPE_TAR, 'testfile.bin',
+                                     [self._FILE_TYPE_TAR], 'testfile.bin',
                                      'bin.tar', 'testfile.bin', False,
                                      output_is_dir=True)
 
     def test_archive_path_directory(self):
         """Test the archive methods with a directory path argument."""
         self._assert_dir_processing(backup.archive_path, backup.unarchive_path,
-                                    self._FILE_TYPE_TAR, 'struct', 'dir.tar',
+                                    [self._FILE_TYPE_TAR], 'struct', 'dir.tar',
                                     'struct', output_is_dir=True)
 
     def test_compress_path_ascii_file(self):
         """Test the compress methods with an ASCII file path argument."""
         self._assert_file_processing(backup.compress_path, backup.uncompress_path,
-                                     self._FILE_TYPE_XZ, 'testfile.txt',
+                                     [self._FILE_TYPE_XZ], 'testfile.txt',
                                      'testfile.xz', 'testfile.txt', True)
 
     def test_compress_path_binary_file(self):
         """Test the compress methods with a binary file path argument."""
         self._assert_file_processing(backup.compress_path, backup.uncompress_path,
-                                     self._FILE_TYPE_XZ, 'testfile.bin',
+                                     [self._FILE_TYPE_XZ], 'testfile.bin',
                                      'compressed.xz', 'testfile.bin', False)
 
     def test_encrypt_path_ascii_file(self):
@@ -330,8 +331,9 @@ class TestBackupMethods(unittest.TestCase):
         encrypt = lambda d, s: backup.encrypt_path(d, s, homedir=test_home)
         unencrypt = lambda d, s: backup.unencrypt_path(d, s, homedir=test_home)
         self._assert_file_processing(encrypt, unencrypt,
-                                     self._FILE_TYPE_GPG, 'testfile.txt',
-                                     'testfile.gpg', 'testfile.txt', True)
+                                     [self._FILE_TYPE_GPG, self._FILE_TYPE_DATA],
+                                     'testfile.txt', 'testfile.gpg',
+                                     'testfile.txt', True)
 
     def test_encrypt_path_binary_file(self):
         """Test the encrypt methods with a binary file path argument."""
@@ -342,8 +344,9 @@ class TestBackupMethods(unittest.TestCase):
         encrypt = lambda d, s: backup.encrypt_path(d, s, homedir=test_home)
         unencrypt = lambda d, s: backup.unencrypt_path(d, s, homedir=test_home)
         self._assert_file_processing(encrypt, unencrypt,
-                                     self._FILE_TYPE_GPG, 'testfile.bin',
-                                     'encrypted.gpg', 'testfile.bin', False)
+                                     [self._FILE_TYPE_GPG, self._FILE_TYPE_DATA],
+                                     'testfile.bin', 'encrypted.gpg',
+                                     'testfile.bin', False)
 
     def test_copy_path_ascii_file(self):
         """Test the copy methods with an ASCII file path argument."""

@@ -1,1 +1,2 @@
 *.pyc
+tests/gpg-test-homedir/random_seed
