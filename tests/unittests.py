@@ -255,6 +255,7 @@ class TestBackupMethods(unittest.TestCase):
                 test_processed_hash = _get_file_md5(test_processed)
             self.assertEqual(32, len(test_processed_hash))
             if processed_is_same:
+                subprocess.check_call(['tree', tempdir])
                 self.assertEqual(test_input_hash, test_processed_hash)
             else:
                 self.assertNotEqual(test_input_hash, test_processed_hash)

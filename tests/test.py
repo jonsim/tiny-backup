@@ -27,12 +27,11 @@ Main test runner for tiny-backup.
 Maintained at https://github.com/jonsim/tiny-backup
 """
 import unittest
-import unittests
 
 def main():
     """Run all test suites."""
-    suite = unittest.TestLoader().loadTestsFromTestCase(unittests.TestBackupMethods)
-    unittest.TextTestRunner(descriptions=False, verbosity=2).run(suite)
+    runner = unittest.TextTestRunner(descriptions=False, verbosity=2)
+    unittest.main(module='unittests', testRunner=runner)
 
 # Entry point.
 if __name__ == "__main__":
