@@ -28,119 +28,16 @@ Maintained at https://github.com/jonsim/tiny-backup
 """
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 import unittest
 # To avoid having to make the parent directory a module just amend PYTHONPATH.
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 import backup
-
-def _create_ascii_file(path, kb_size=16):
-    """Creates an ASCII file.
-
-    Args:
-        path:       string path for the file to be written to.
-        kb_size:    int (approximate) size, in KB, of the file to create.
-    """
-    assert not os.path.exists(path)
-    with open(path, 'w') as out_file:
-        num = 0
-        file_size = 0
-        while (file_size / 1024) < kb_size:
-            line = ' '.join(["%04d" % (i) for i in range(num * 16, (num + 1) * 16)]) + '\n'
-            out_file.write(line)
-            num += 1
-            file_size += len(line)
-
-def _create_binary_file(path, kb_size=16):
-    """Creates a binary file.
-
-    Args:
-        path:       string path for the file to be written to.
-        kb_size:    int (approximate) size, in KB, of the file to create.
-    """
-    assert not os.path.exists(path)
-    with open(path, 'wb') as out_file:
-        out_file.write(bytearray(range(256) * 4 * kb_size))
-
-def _create_test_dir(path):
-    """Creates a test directory and populates it full of files.
-
-    Args:
-        path:       string path for the directory to be created at.
-    """
-    assert not os.path.exists(path)
-    os.makedirs(path)
-    _create_ascii_file(os.path.join(path, 'file.txt'), 8)
-    _create_ascii_file(os.path.join(path, 'file.log'), 24)
-    _create_binary_file(os.path.join(path, 'file.bin'), 16)
-
-def _create_test_structure(path):
-    """Creates a test directory structure with files and directories.
-
-    Args:
-        path:       string path for the directory structure to be created at.
-    """
-    assert not os.path.exists(path)
-    os.makedirs(path)
-    _create_test_dir(os.path.join(path, 'test_dir1'))
-    _create_test_dir(os.path.join(path, 'test_dir1', 'test_subdir'))
-    _create_test_dir(os.path.join(path, 'test_dir2'))
-    _create_ascii_file(os.path.join(path, 'root_file.txt'))
-    _create_binary_file(os.path.join(path, 'root_file.bin'))
-
-def _get_file_md5(path):
-    """Retrieves the md5sum of a file's contents.
-
-    Args:
-        path:   string path of the file to hash.
-
-    Returns:
-        string md5sum hash.
-    """
-    import hashlib
-    hash_md5 = hashlib.md5()
-    with open(path, 'rb') as in_file:
-        hash_md5.update(in_file.read())
-    return hash_md5.hexdigest()
-
-def _get_dir_md5(path):
-    """Retrieves the md5sum for a directory and all its contents.
-
-    Args:
-        path:   string path of the directory to hash.
-
-    Returns:
-        string md5sum hash.
-    """
-    import hashlib
-    hash_md5 = hashlib.md5()
-    for root, dirs, files in os.walk(path):
-        dirs.sort()
-        files.sort()
-        rel_root = '.' + root[len(path):]
-        hash_md5.update(rel_root)
-        for directory in dirs:
-            hash_md5.update(directory)
-        for sub_file in files:
-            with open(os.path.join(root, sub_file), 'rb') as in_file:
-                hash_md5.update(in_file.read())
-    return hash_md5.hexdigest()
-
-def _get_file_type(path):
-    """Determines the file type of a path as given by the 'file' command.
-
-    Args:
-        path:   string path of the file whose type will be determined.
-
-    Returns:
-        string file type.
-    """
-    return subprocess.check_output(['file', '--brief', path]).strip()
+import test
 
 class TestBackupMethods(unittest.TestCase):
-    """Test runner method"""
+    """Unit tests TestCase"""
 
     _FILE_TYPE_ASCII = 'ASCII text'
     _FILE_TYPE_BINARY = 'raw G3 data, byte-padded'
@@ -166,18 +63,18 @@ class TestBackupMethods(unittest.TestCase):
 
             # Create the file.
             if is_ascii:
-                _create_ascii_file(test_input)
+                test.create_ascii_file(test_input)
                 input_file_type = self._FILE_TYPE_ASCII
             else:
-                _create_binary_file(test_input)
+                test.create_binary_file(test_input)
                 input_file_type = self._FILE_TYPE_BINARY
 
             # Assert the starting state looks as we expect.
             self.assertTrue(os.path.isfile(test_input))
             self.assertFalse(os.path.exists(test_processed))
             self.assertFalse(os.path.exists(test_output))
-            self.assertEqual(input_file_type, _get_file_type(test_input))
-            test_input_hash = _get_file_md5(test_input)
+            self.assertEqual(input_file_type, test.get_file_type(test_input))
+            test_input_hash = test.get_file_md5(test_input)
 
             # Perform the processing operation on the file.
             processing_func(test_processed, test_input)
@@ -186,10 +83,10 @@ class TestBackupMethods(unittest.TestCase):
             self.assertTrue(os.path.isfile(test_input))
             self.assertTrue(os.path.isfile(test_processed))
             self.assertFalse(os.path.exists(test_output))
-            self.assertEqual(input_file_type, _get_file_type(test_input))
-            self.assertEqual(test_input_hash, _get_file_md5(test_input))
-            self.assertIn(_get_file_type(test_processed), processed_file_types)
-            test_processed_hash = _get_file_md5(test_processed)
+            self.assertEqual(input_file_type, test.get_file_type(test_input))
+            self.assertEqual(test_input_hash, test.get_file_md5(test_input))
+            self.assertIn(test.get_file_type(test_processed), processed_file_types)
+            test_processed_hash = test.get_file_md5(test_processed)
             self.assertEqual(32, len(test_processed_hash))
             if processed_is_same:
                 self.assertEqual(test_input_hash, test_processed_hash)
@@ -208,10 +105,10 @@ class TestBackupMethods(unittest.TestCase):
             self.assertFalse(os.path.exists(test_input))
             self.assertTrue(os.path.isfile(test_processed))
             self.assertTrue(os.path.isfile(test_output))
-            self.assertEqual(input_file_type, _get_file_type(test_output))
-            self.assertEqual(test_input_hash, _get_file_md5(test_output))
-            self.assertIn(_get_file_type(test_processed), processed_file_types)
-            self.assertEqual(test_processed_hash, _get_file_md5(test_processed))
+            self.assertEqual(input_file_type, test.get_file_type(test_output))
+            self.assertEqual(test_input_hash, test.get_file_md5(test_output))
+            self.assertIn(test.get_file_type(test_processed), processed_file_types)
+            self.assertEqual(test_processed_hash, test.get_file_md5(test_processed))
 
         finally:
             shutil.rmtree(tempdir)
@@ -231,14 +128,14 @@ class TestBackupMethods(unittest.TestCase):
             test_output = os.path.join(out_dir, output_dirname)
 
             # Create the structure.
-            _create_test_structure(test_input)
+            test.create_test_structure(test_input)
 
             # Assert the starting state looks as we expect.
             self.assertTrue(os.path.isdir(test_input))
             self.assertFalse(os.path.exists(test_processed))
             self.assertFalse(os.path.exists(test_output))
-            self.assertEqual(self._FILE_TYPE_DIR, _get_file_type(test_input))
-            test_input_hash = _get_dir_md5(test_input)
+            self.assertEqual(self._FILE_TYPE_DIR, test.get_file_type(test_input))
+            test_input_hash = test.get_dir_md5(test_input)
 
             # Perform the processing operation on the directory.
             processing_func(test_processed, test_input)
@@ -250,13 +147,13 @@ class TestBackupMethods(unittest.TestCase):
             else:
                 self.assertTrue(os.path.isfile(test_processed))
             self.assertFalse(os.path.exists(test_output))
-            self.assertEqual(self._FILE_TYPE_DIR, _get_file_type(test_input))
-            self.assertEqual(test_input_hash, _get_dir_md5(test_input))
-            self.assertIn(_get_file_type(test_processed), processed_file_types)
+            self.assertEqual(self._FILE_TYPE_DIR, test.get_file_type(test_input))
+            self.assertEqual(test_input_hash, test.get_dir_md5(test_input))
+            self.assertIn(test.get_file_type(test_processed), processed_file_types)
             if processed_is_dir:
-                test_processed_hash = _get_dir_md5(test_processed)
+                test_processed_hash = test.get_dir_md5(test_processed)
             else:
-                test_processed_hash = _get_file_md5(test_processed)
+                test_processed_hash = test.get_file_md5(test_processed)
             self.assertEqual(32, len(test_processed_hash))
             if processed_is_same:
                 self.assertEqual(test_input_hash, test_processed_hash)
@@ -278,13 +175,13 @@ class TestBackupMethods(unittest.TestCase):
             else:
                 self.assertTrue(os.path.isfile(test_processed))
             self.assertTrue(os.path.isdir(test_output))
-            self.assertEqual(self._FILE_TYPE_DIR, _get_file_type(test_output))
-            self.assertEqual(test_input_hash, _get_dir_md5(test_output))
-            self.assertIn(_get_file_type(test_processed), processed_file_types)
+            self.assertEqual(self._FILE_TYPE_DIR, test.get_file_type(test_output))
+            self.assertEqual(test_input_hash, test.get_dir_md5(test_output))
+            self.assertIn(test.get_file_type(test_processed), processed_file_types)
             if processed_is_dir:
-                self.assertEqual(test_processed_hash, _get_dir_md5(test_processed))
+                self.assertEqual(test_processed_hash, test.get_dir_md5(test_processed))
             else:
-                self.assertEqual(test_processed_hash, _get_file_md5(test_processed))
+                self.assertEqual(test_processed_hash, test.get_file_md5(test_processed))
 
         finally:
             shutil.rmtree(tempdir)
@@ -388,5 +285,5 @@ class TestBackupMethods(unittest.TestCase):
         src_file = '/some/filename'
         out_file1 = backup.get_out_filename(base_dir, src_file, 'txt')
         out_file2 = backup.get_out_filename(src_file, base_dir, 'x')
-        self.assertEquals('/root/dir/filename.txt', out_file1)
-        self.assertEquals('/some/filename/dir.x', out_file2)
+        self.assertEqual('/root/dir/filename.txt', out_file1)
+        self.assertEqual('/some/filename/dir.x', out_file2)
