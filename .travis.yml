@@ -1,7 +1,12 @@
 language: python
 python:
   - "2.7"
-# No dependencies beyond vanilla Python 2.7.
-install: true
-# Single unit test script.
-script: ./backup_unittests.py
+# Only dependency beyond vanilla Python 2.7 is coveralls for coverage reporting
+# (https://github.com/coveralls-clients/coveralls-python).
+install:
+  - pip install coveralls
+# Run the unit test script.
+script:
+  - coverage run --source=backup backup_unittests.py
+after_success:
+  - coveralls
