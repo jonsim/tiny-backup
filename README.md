@@ -30,7 +30,7 @@ as described in the configuration file.
 - tar (tested with 1.28) (only needed if archiving is required)
 - xz (tested with 5.1.0) (only needed if compression is required)
 - GPG (tested with 1.4.20) (only needed if encryption is required) (it is
-  assumed keys are correctly configured)
+  assumed keys are [correctly configured](http://www.dewinter.com/gnupg_howto/english/GPGMiniHowto.html))
 
 All of the above are expected to be on the `$PATH`. NB: No explicit effort is
 made to ensure the output, particularly of GPG, is of a particular format. It is

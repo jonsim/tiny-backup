@@ -147,7 +147,8 @@ class TestBackupMethods(unittest.TestCase):
     _FILE_TYPE_DIR = 'directory'
     _FILE_TYPE_TAR = 'POSIX tar archive (GNU)'
     _FILE_TYPE_XZ = 'XZ compressed data'
-    _FILE_TYPE_GPG = 'PGP RSA encrypted session key'
+    _FILE_TYPE_GPG = 'PGP RSA encrypted session key - keyid: A294AFC5 ' \
+                     'A32F6F37 RSA (Encrypt or Sign) 1024b .'
 
     def _assert_file_processing(self, processing_func, unprocessing_func,
                                 processed_file_type, input_filename,
@@ -257,7 +258,6 @@ class TestBackupMethods(unittest.TestCase):
                 test_processed_hash = _get_file_md5(test_processed)
             self.assertEqual(32, len(test_processed_hash))
             if processed_is_same:
-                subprocess.check_call(['find', tempdir])
                 self.assertEqual(test_input_hash, test_processed_hash)
             else:
                 self.assertNotEqual(test_input_hash, test_processed_hash)
@@ -321,15 +321,27 @@ class TestBackupMethods(unittest.TestCase):
                                      self._FILE_TYPE_XZ, 'testfile.bin',
                                      'compressed.xz', 'testfile.bin', False)
 
-    def xtest_encrypt_path_ascii_file(self):
+    def test_encrypt_path_ascii_file(self):
         """Test the encrypt methods with an ASCII file path argument."""
-        self._assert_file_processing(backup.encrypt_path, backup.unencrypt_path,
+        # Wrap the backup.xcrypt_path functions so we can inject the unittesting
+        # homedir and use it's key (which should never be used for anything as
+        # it's completely insecure) rather than the keys of the current user.
+        test_home = os.path.join(sys.path[0], 'gpg-test-homedir')
+        encrypt = lambda d, s: backup.encrypt_path(d, s, homedir=test_home)
+        unencrypt = lambda d, s: backup.unencrypt_path(d, s, homedir=test_home)
+        self._assert_file_processing(encrypt, unencrypt,
                                      self._FILE_TYPE_GPG, 'testfile.txt',
                                      'testfile.gpg', 'testfile.txt', True)
 
-    def xtest_encrypt_path_binary_file(self):
+    def test_encrypt_path_binary_file(self):
         """Test the encrypt methods with a binary file path argument."""
-        self._assert_file_processing(backup.encrypt_path, backup.unencrypt_path,
+        # Wrap the backup.xcrypt_path functions so we can inject the unittesting
+        # homedir and use it's key (which should never be used for anything as
+        # it's completely insecure) rather than the keys of the current user.
+        test_home = os.path.join(sys.path[0], 'gpg-test-homedir')
+        encrypt = lambda d, s: backup.encrypt_path(d, s, homedir=test_home)
+        unencrypt = lambda d, s: backup.unencrypt_path(d, s, homedir=test_home)
+        self._assert_file_processing(encrypt, unencrypt,
                                      self._FILE_TYPE_GPG, 'testfile.bin',
                                      'encrypted.gpg', 'testfile.bin', False)
 

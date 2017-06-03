@@ -67,7 +67,7 @@ def archive_path(dest, src, excludes=[], verbose=False):
     cmd.append('--create')
     if verbose:
         print '\narchive_path(%s, %s)' % (dest, src)
-        cmd.append('-v')
+        cmd.append('--verbose')
     if excludes:
         for exclude in excludes:
             cmd.append('--exclude=%s' % (exclude))
@@ -89,7 +89,7 @@ def unarchive_path(dest, src, verbose=False):
     cmd.append('--extract')
     if verbose:
         print '\nunarchive_path(%s, %s)' % (dest, src)
-        cmd.append('-v')
+        cmd.append('--verbose')
     cmd.append('--file')
     cmd.append(src)
     cmd.append('--directory')
@@ -105,7 +105,9 @@ def compress_path(dest, src, verbose=False):
     cmd = ['xz']
     if verbose:
         print '\ncompress_path(%s, %s)' % (dest, src)
-        cmd.append('-v')
+        cmd.append('--verbose')
+    else:
+        cmd.append('--quiet')
     cmd.append('--keep')
     cmd.append('--stdout')
     cmd.append('--compress')
@@ -123,7 +125,9 @@ def uncompress_path(dest, src, verbose=False):
     cmd = ['xz']
     if verbose:
         print '\nuncompress_path(%s, %s)' % (dest, src)
-        cmd.append('-v')
+        cmd.append('--verbose')
+    else:
+        cmd.append('--quiet')
     cmd.append('--keep')
     cmd.append('--stdout')
     cmd.append('--decompress')
@@ -136,13 +140,18 @@ def uncompress_path(dest, src, verbose=False):
         raise OSError('xz command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
 
-def encrypt_path(dest, src, verbose=False):
+def encrypt_path(dest, src, homedir=None, verbose=False):
     assert dest and not os.path.isdir(dest) and dest.endswith('.gpg')
     assert src and os.path.isfile(src)
     cmd = ['gpg']
     if verbose:
         print '\nencrypt_path(%s, %s)' % (dest, src)
-        cmd.append('-v')
+        cmd.append('--verbose')
+    else:
+        cmd.append('--quiet')
+    if homedir:
+        cmd.append('--homedir')
+        cmd.append(homedir)
     cmd.append('--default-recipient-self')
     cmd.append('--output')
     cmd.append(dest)
@@ -154,13 +163,18 @@ def encrypt_path(dest, src, verbose=False):
         raise OSError('gpg command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
 
-def unencrypt_path(dest, src, verbose=False):
+def unencrypt_path(dest, src, homedir=None, verbose=False):
     assert dest and not os.path.isdir(dest)
     assert src and os.path.isfile(src) and src.endswith('.gpg')
     cmd = ['gpg']
     if verbose:
         print '\nunencrypt_path(%s, %s)' % (dest, src)
-        cmd.append('-v')
+        cmd.append('--verbose')
+    else:
+        cmd.append('--quiet')
+    if homedir:
+        cmd.append('--homedir')
+        cmd.append(homedir)
     cmd.append('--default-recipient-self')
     cmd.append('--output')
     cmd.append(dest)
@@ -177,7 +191,9 @@ def copy_path(dest, src, excludes=[], verbose=False):
     cmd = ['rsync']
     if verbose:
         print '\ncopy_path(%s, %s)' % (dest, src)
-        cmd.append('-v')            # Set verbosity (-v)
+        cmd.append('--verbose')
+    else:
+        cmd.append('--quiet')
     cmd.append('--archive')         # Preserve metadata (-a)
     cmd.append('--delete')          # Delete extra files
     cmd.append('--compress')        # Compress xfer data (-z)
