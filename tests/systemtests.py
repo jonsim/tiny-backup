@@ -188,7 +188,7 @@ class TestBackupSystem(unittest.TestCase):
 
         return in_struct, out_struct, cfg_file
 
-    def test_file_copy(self):
+    def test_file(self):
         """Most basic test of a single file backup."""
         try:
             # Setup the test state.
@@ -214,7 +214,7 @@ class TestBackupSystem(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    def test_file_copy_archive(self):
+    def test_file_archive(self):
         """Basic test of a single file archive and backup."""
         try:
             # Setup the test state.
@@ -244,7 +244,7 @@ class TestBackupSystem(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    def test_file_copy_compress(self):
+    def test_file_compress(self):
         """Basic test of a single file compress and backup."""
         try:
             # Setup the test state.
@@ -274,7 +274,7 @@ class TestBackupSystem(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    def test_file_copy_encrypt(self):
+    def test_file_encrypt(self):
         """Basic test of a single file encrypt and backup."""
         try:
             # Setup the test state.
@@ -304,7 +304,7 @@ class TestBackupSystem(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    def test_file_copy_full_pipeline(self):
+    def test_file_full_pipeline(self):
         """Basic test of a single file archive, compress, encrypt and backup."""
         try:
             # Setup the test state.
@@ -339,7 +339,7 @@ class TestBackupSystem(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    def test_dir_copy(self):
+    def test_dir(self):
         """Most basic test of a single directory backup."""
         try:
             # Setup the test state.
@@ -365,7 +365,7 @@ class TestBackupSystem(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    def test_dir_copy_archive(self):
+    def test_dir_archive(self):
         """Basic test of a single directory archive and backup."""
         try:
             # Setup the test state.
@@ -394,7 +394,7 @@ class TestBackupSystem(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    def test_dir_copy_compress(self):
+    def test_dir_compress(self):
         """Basic test of a single directory archive, compress and backup."""
         try:
             # Setup the test state.
@@ -425,7 +425,7 @@ class TestBackupSystem(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    def test_dir_copy_encrypt(self):
+    def test_dir_encrypt(self):
         """Basic test of a single directory archive, encrypt and backup."""
         try:
             # Setup the test state.
@@ -457,7 +457,7 @@ class TestBackupSystem(unittest.TestCase):
         finally:
             shutil.rmtree(tempdir)
 
-    def test_dir_copy_full_pipeline(self):
+    def test_dir_full_pipeline(self):
         """Basic test of a single directory archive, encrypt and backup."""
         try:
             # Setup the test state.
@@ -473,6 +473,48 @@ class TestBackupSystem(unittest.TestCase):
             with redir_stdstreams() as (stdout, stderr):
                 backup.main(['--config', cfg_file, '--gpg-home', test.GPG_HOME])
             self.assertEqual('', stdout.getvalue().strip())
+            self.assertEqual('', stderr.getvalue().strip())
+
+            # Assert the output state looks as we expect.
+            self.assertTrue(os.path.isdir(in_struct))
+            self.assertTrue(os.path.isfile(out_struct))
+            self.assertEqual(in_dir_hash, test.get_dir_md5(in_dir))
+            undo_out_file = os.path.join(out_dir, 'struct')
+            backup.unencrypt_path(os.path.join(tempdir, 'struct.tar.xz'),
+                                  out_struct, homedir=test.GPG_HOME)
+            backup.uncompress_path(os.path.join(tempdir, 'struct.tar'),
+                                   os.path.join(tempdir, 'struct.tar.xz'))
+            backup.unarchive_path(out_dir, os.path.join(tempdir, 'struct.tar'))
+            self.assertTrue(os.path.isdir(undo_out_file))
+            self.assertEqual(in_dir_hash, test.get_dir_md5(out_dir))
+
+        finally:
+            shutil.rmtree(tempdir)
+
+    def test_dir_full_pipeline_verbose(self):
+        """
+        Basic test of a single directory archive, encrypt and backup while
+        outputting verbose status, ensuring it does not change the result.
+        """
+        try:
+            # Setup the test state.
+            tempdir, in_dir, out_dir = self._create_tempdir_structure('input', \
+                'output')
+            in_struct, out_struct, cfg_file = self._create_single_dir_test(\
+                'struct', 'struct.tar.xz.gpg', tempdir, in_dir, tempdir, \
+                [_ConfigSection('input/struct', tempdir, archive='yes',
+                                compress='yes', encrypt='yes')])
+            in_dir_hash = test.get_dir_md5(in_dir)
+
+            # Run backup.
+            with redir_stdstreams() as (stdout, stderr):
+                backup.main(['--config', cfg_file, '--gpg-home', test.GPG_HOME,
+                             '--verbose'])
+            stdout_str = stdout.getvalue().strip()
+            self.assertIn('archive_path', stdout_str)
+            self.assertIn('compress_path', stdout_str)
+            self.assertIn('encrypt_path', stdout_str)
+            self.assertIn('copy_path', stdout_str)
             self.assertEqual('', stderr.getvalue().strip())
 
             # Assert the output state looks as we expect.
