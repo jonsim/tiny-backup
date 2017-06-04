@@ -52,6 +52,34 @@ class TestBackupMethods(unittest.TestCase):
                                 processed_file_types, input_filename,
                                 processed_filename, output_filename, is_ascii,
                                 output_is_dir=False, processed_is_same=False):
+        """
+        Creates a single testing file either ASCII or binary in the root tempdir
+        and then performs a generic 'processing function' to mutate this into
+        a 'processed' file. Finally it performs a generic 'unprocessing
+        function' to un-mutate this processed file into an output directory (to
+        remove the chance of name collision) in an 'output' directory. Asserts
+        that the input and output files are the same and that the processed file
+        state is as expected.
+
+        Args:
+            processing_func:        A callable which has a signature like
+                processing_func(dest, src) where dest is a path to the processed
+                output and src is a path to the input for processing.
+            unprocessing_func:      A callable which has a signature like
+                unprocessing_func(dest, src) where dest is a path to the
+                unprocessed output and src is a path to the input for
+                unprocessing.
+            processed_file_types:   A list of strings describing the acceptable
+                file types of the processed output.
+            input_filename:         string name of the input file.
+            processed_filename:     string name of the processed file.
+            output_filename:        string name of the unprocessed file.
+            is_ascii:               boolean, True to create an ASCII file type,
+                False to create a binary file type.
+            output_is_dir:          boolean, True if the output is a directory.
+            processed_is_same:      boolean, True if the processed output is the
+                same as the input.
+        """
         try:
             tempdir = tempfile.mkdtemp()
             out_dir = os.path.join(tempdir, 'output')

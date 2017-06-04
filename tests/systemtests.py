@@ -61,8 +61,11 @@ def redir_stdstreams():
         sys.stdout, sys.stderr = old_stdout, old_stderr
 
 class _ConfigSection(object):
+    """A class wrapping a description of a config file section."""
+
     def __init__(self, section, dest, src=None, archive=None, compress=None,
                  encrypt=None):
+        """Initialise the config file section description."""
         self.section = section
         self.dest = dest
         self.src = src
@@ -71,6 +74,13 @@ class _ConfigSection(object):
         self.encrypt = encrypt
 
 def _write_config_file(config_path, sections):
+    """
+    Creates a config file from a list of _ConfigSections.
+
+    Args:
+        config_path:    string path to create the config file in.
+        sections:       list of _ConfigSections to create the file from.
+    """
     with open(config_path, 'w') as config_file:
         for section in sections:
             config_file.write('[%s]\n' % (section.section))
@@ -85,18 +95,22 @@ def _write_config_file(config_path, sections):
                 config_file.write('encrypt = %s\n' % (section.encrypt))
             config_file.write('\n')
 
-class _SystemTestData(object):
-    def __init__(self, in_dir, in_dir_hash, out_dir, out_dir_hash):
-        self.in_dir = in_dir
-        self.in_dir_hash = in_dir_hash
-        self.out_dir = out_dir
-        self.out_dir_hash = out_dir_hash
-
 class TestBackupSystem(unittest.TestCase):
     """System tests TestCase"""
 
     def _create_tempdir_structure(self, in_dirname, out_dirname):
-        # Create temporary directory structure.
+        """
+        Creates a temporary directory structure to hold system input and output.
+
+        Args:
+            in_dirname:     string name of directory for system input.
+            out_dirname:    string name of directory for system output.
+
+        Returns:
+            string path to root temporary directory.
+            string path to directory for system input.
+            string path to directory for system output.
+        """
         tempdir = tempfile.mkdtemp()
         in_dir = os.path.join(tempdir, in_dirname)
         out_dir = os.path.join(tempdir, out_dirname)
@@ -106,6 +120,23 @@ class TestBackupSystem(unittest.TestCase):
 
     def _create_single_file_test(self, in_filename, out_filename, cfg_dir,
                                  in_dir, out_dir, sections):
+        """
+        Creates a single file in the test directory and a config file describing
+        it. Asserts that the test directory looks as expected.
+
+        Args:
+            in_filename:    string name of input file to create.
+            out_filename:   string expected name of output file.
+            cfg_dir:        string path to directory to hold the config file.
+            in_dir:         string path to directory for system input.
+            out_dir:        string path to directory for system output.
+            sections:       list of _ConfigSections to create the file from.
+
+        Returns:
+            string path to created input file.
+            string path to expected output file.
+            string path to created config file.
+        """
         # Create files within the input structure.
         in_file = os.path.join(in_dir, in_filename)
         out_file = os.path.join(out_dir, out_filename)
@@ -124,6 +155,23 @@ class TestBackupSystem(unittest.TestCase):
 
     def _create_single_dir_test(self, in_dirname, out_dirname, cfg_dir,
                                 in_dir, out_dir, sections):
+        """
+        Creates a test directory structure in the test directory and a config
+        file describing it. Asserts that the test directory looks as expected.
+
+        Args:
+            in_dirname:     string name of input directory to create.
+            out_dirname:    string expected name of output directory.
+            cfg_dir:        string path to directory to hold the config file.
+            in_dir:         string path to directory for system input.
+            out_dir:        string path to directory for system output.
+            sections:       list of _ConfigSections to create the file from.
+
+        Returns:
+            string path to created input structure.
+            string path to expected output structure.
+            string path to created config file.
+        """
         # Create files within the input structure.
         in_struct = os.path.join(in_dir, in_dirname)
         out_struct = os.path.join(out_dir, out_dirname)

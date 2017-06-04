@@ -52,16 +52,35 @@ DEFAULTS = {
 _TEMPDIR = None
 
 def make_tempdir():
-    """Retrieves a temporary directory, creating it if necessary.
+    """
+    Retrieves a temporary directory, creating it if necessary.
 
-    Returns:    string path to a temporary directory.
+    Returns:
+        string path to a temporary directory.
     """
     global _TEMPDIR
     if not _TEMPDIR:
         _TEMPDIR = tempfile.mkdtemp()
     return _TEMPDIR
 
-def archive_path(dest, src, excludes=[], verbose=False):
+def archive_path(dest, src, excludes=None, verbose=False):
+    """
+    Packs a file or directory into a .tar archive.
+
+    Args:
+        dest:       string path for the destination file for the archive. Must
+            end with '.tar'.
+        src:        string path for the source file or directory for the
+            archive.
+        excludes:   list of strings of paths to exclude from the archive. May be
+            None or an empty list to include all files from source. Defaults to
+            None.
+        verbose:    boolean, True to output verbose status to stdout. Defaults
+            to False.
+
+    Raises:
+        OSError:    if the 'tar' command fails for any reason.
+    """
     assert dest and not os.path.isdir(dest) and dest.endswith('.tar')
     assert src and os.path.exists(src)
     cmd = ['tar']
@@ -84,6 +103,21 @@ def archive_path(dest, src, excludes=[], verbose=False):
                       (cpe.cmd, cpe.output))
 
 def unarchive_path(dest, src, verbose=False):
+    """
+    Extracts a .tar archive into a directory.
+
+    Args:
+        dest:       string path for the destination *directory* into which the
+            archive contents will be extracted. NB: This is the directory to
+            extract into, not the final path for the contents of the archive.
+        src:        string path for the source archive file. Must end with
+            '.tar'.
+        verbose:    boolean, True to output verbose status to stdout. Defaults
+            to False.
+
+    Raises:
+        OSError:    if the 'tar' command fails for any reason.
+    """
     assert dest and os.path.isdir(dest)
     assert src and os.path.isfile(src) and src.endswith('.tar')
     cmd = ['tar']
@@ -102,6 +136,18 @@ def unarchive_path(dest, src, verbose=False):
                       (cpe.cmd, cpe.output))
 
 def compress_path(dest, src, verbose=False):
+    """
+    Compresses a file into an xz-compressed file.
+
+    Args:
+        dest:       string path for the destination file. Must end with '.xz'.
+        src:        string path for the source file to compress.
+        verbose:    boolean, True to output verbose status to stdout. Defaults
+            to False.
+
+    Raises:
+        OSError:    if the 'xz' command fails for any reason.
+    """
     assert dest and not os.path.isdir(dest) and dest.endswith('.xz')
     assert src and os.path.isfile(src)
     cmd = ['xz']
@@ -123,6 +169,19 @@ def compress_path(dest, src, verbose=False):
                       (cpe.cmd, cpe.output))
 
 def uncompress_path(dest, src, verbose=False):
+    """
+    Uncompresses an xz-compressed file into it's original format.
+
+    Args:
+        dest:       string path for the destination uncompressed file.
+        src:        string path for the source compressed file. Must end with
+            '.xz'.
+        verbose:    boolean, True to output verbose status to stdout. Defaults
+            to False.
+
+    Raises:
+        OSError:    if the 'xz' command fails for any reason.
+    """
     assert dest and not os.path.isdir(dest)
     assert src and os.path.isfile(src) and src.endswith('.xz')
     cmd = ['xz']
@@ -144,6 +203,21 @@ def uncompress_path(dest, src, verbose=False):
                       (cpe.cmd, cpe.output))
 
 def encrypt_path(dest, src, homedir=None, verbose=False):
+    """
+    Encrypts a file into a gpg-encrypted file.
+
+    Args:
+        dest:       string path for the destination file. Must end with '.gpg'.
+        src:        string path for the source file to encrypt.
+        homedir:    string path for the location of the GPG home directory to
+            use. May be None to use the default location for the machine's GPG
+            implementation (typically ~/gnupg). Defaults to None.
+        verbose:    boolean, True to output verbose status to stdout. Defaults
+            to False.
+
+    Raises:
+        OSError:    if the 'gpg' command fails for any reason.
+    """
     assert dest and not os.path.isdir(dest) and dest.endswith('.gpg')
     assert src and os.path.isfile(src)
     cmd = ['gpg']
@@ -167,6 +241,22 @@ def encrypt_path(dest, src, homedir=None, verbose=False):
                       (cpe.cmd, cpe.output))
 
 def unencrypt_path(dest, src, homedir=None, verbose=False):
+    """
+    Decrypts a gpg-encrypted file into its original format.
+
+    Args:
+        dest:       string path for the destination decrypted file.
+        src:        string path for the source file to decrypt. Must end with
+            '.gpg'.
+        homedir:    string path for the location of the GPG home directory to
+            use. May be None to use the default location for the machine's GPG
+            implementation (typically ~/gnupg). Defaults to None.
+        verbose:    boolean, True to output verbose status to stdout. Defaults
+            to False.
+
+    Raises:
+        OSError:    if the 'gpg' command fails for any reason.
+    """
     assert dest and not os.path.isdir(dest)
     assert src and os.path.isfile(src) and src.endswith('.gpg')
     cmd = ['gpg']
@@ -189,7 +279,22 @@ def unencrypt_path(dest, src, homedir=None, verbose=False):
         raise OSError('gpg command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
 
-def copy_path(dest, src, excludes=[], verbose=False):
+def copy_path(dest, src, excludes=None, verbose=False):
+    """
+    Copies a path to another location.
+
+    Args:
+        dest:       string path for the destination copied file or directory.
+        src:        string path for the source file or directory to copy.
+        excludes:   list of strings of paths to exclude from the copy. May be
+            None or an empty list to include all files from source. Defaults to
+            None.
+        verbose:    boolean, True to output verbose status to stdout. Defaults
+            to False.
+
+    Raises:
+        OSError:    if the 'rsync' command fails for any reason.
+    """
     assert dest
     assert src
     cmd = ['rsync']
@@ -214,14 +319,51 @@ def copy_path(dest, src, excludes=[], verbose=False):
                       (cpe.cmd, cpe.output))
 
 def resolve_relative_path(path, config_path):
+    """
+    Resolves relative paths into absolute paths relative to the config file.
+
+    Args:
+        path:           string (potentially) relative path to resolve.
+        config_path:    string path to the config file to resolve relative to.
+
+    Returns:
+        string absolute path (unaltered if 'path' was already absolute).
+    """
     if os.path.isabs(path):
         return path
     return os.path.join(os.path.dirname(config_path), path)
 
 def get_out_filename(dirname, src, extension):
+    """
+    Forms a filename from a dir-name, file-name and file-extension.
+
+    Args:
+        dirname:    string path to directory to use.
+        src:        string path to file whose basename to use.
+        extension:  string file extension (without preceding '.') to use.
+
+    Returns:
+        string path formed from the given components.
+    """
     return os.path.join(dirname, '%s.%s' % (os.path.basename(src), extension))
 
 def process_section(config, section, config_path, verbose=False, gpg_home=None):
+    """
+    Process a config file section and perform the actions it describes.
+
+    Args:
+        config:         ConfigParser to read the section from.
+        section:        string section name to read from the ConfigParser.
+        config_path:    string path to the read config file.
+        verbose:        boolean, True to output verbose status to stdout.
+            Defaults to False.
+        gpg_home:       string path for the location of the GPG home directory
+            to use. May be None to use the default location for the machine's
+            GPG implementation (typically ~/gnupg). Defaults to None.
+
+    Raises:
+        OSError:    if the source path given in the section does not exist.
+    """
     # Extract fields from the section (and write-back any missing).
     if not config.has_option(section, SRC_KEY):
         config.set(section, SRC_KEY, section)
@@ -233,7 +375,7 @@ def process_section(config, section, config_path, verbose=False, gpg_home=None):
 
     # Validate args.
     if not os.path.exists(pipeline_src):
-        raise Exception("Source path %s does not exist." % (pipeline_src))
+        raise OSError("Source path %s does not exist." % (pipeline_src))
     if not os.path.exists(pipeline_dest):
         os.makedirs(pipeline_dest)
     if (compress or encrypt) and os.path.isdir(pipeline_src):
@@ -268,6 +410,9 @@ def main(argv=None):
     Args:
         argv:   list of strings to pass through to the ArgumentParser. If None
             will pass through sys.argv instead. Defaults to None.
+
+    Raises:
+        OSError:    if the config file path given does not exist.
     """
     global _TEMPDIR
     # Handle command line.

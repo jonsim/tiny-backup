@@ -44,7 +44,8 @@ GPG_HOME = os.path.join(sys.path[0], 'gpg-test-homedir')
 #
 
 def create_ascii_file(path, kb_size=16):
-    """Creates an ASCII file.
+    """
+    Creates an ASCII file.
 
     Args:
         path:       string path for the file to be written to.
@@ -61,7 +62,8 @@ def create_ascii_file(path, kb_size=16):
             file_size += len(line)
 
 def create_binary_file(path, kb_size=16):
-    """Creates a binary file.
+    """
+    Creates a binary file.
 
     Args:
         path:       string path for the file to be written to.
@@ -72,7 +74,8 @@ def create_binary_file(path, kb_size=16):
         out_file.write(bytearray(range(256) * 4 * kb_size))
 
 def create_test_dir(path):
-    """Creates a test directory and populates it full of files.
+    """
+    Creates a test directory and populates it full of files.
 
     Args:
         path:       string path for the directory to be created at.
@@ -84,7 +87,8 @@ def create_test_dir(path):
     create_binary_file(os.path.join(path, 'file.bin'), 16)
 
 def create_test_structure(path):
-    """Creates a test directory structure with files and directories.
+    """
+    Creates a test directory structure with files and directories.
 
     Args:
         path:       string path for the directory structure to be created at.
@@ -98,7 +102,8 @@ def create_test_structure(path):
     create_binary_file(os.path.join(path, 'root_file.bin'))
 
 def get_file_md5(path):
-    """Retrieves the md5sum of a file's contents.
+    """
+    Retrieves the md5sum of a file's contents.
 
     Args:
         path:   string path of the file to hash.
@@ -113,7 +118,8 @@ def get_file_md5(path):
     return hash_md5.hexdigest()
 
 def get_dir_md5(path):
-    """Retrieves the md5sum for a directory and all its contents.
+    """
+    Retrieves the md5sum for a directory and all its contents.
 
     Args:
         path:   string path of the directory to hash.
@@ -136,7 +142,8 @@ def get_dir_md5(path):
     return hash_md5.hexdigest()
 
 def get_file_type(path):
-    """Determines the file type of a path as given by the 'file' command.
+    """
+    Determines the file type of a path as given by the 'file' command.
 
     Args:
         path:   string path of the file whose type will be determined.
