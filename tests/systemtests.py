@@ -532,3 +532,20 @@ class TestBackupSystem(unittest.TestCase):
 
         finally:
             shutil.rmtree(tempdir)
+
+    def test_nonexistant_config_error(self):
+        """Test that providing a non-existant config file raises an error."""
+        self.assertRaises(OSError, backup.main, ['--config', '/no/such/file.txt'])
+
+    def test_invalid_config_error(self):
+        """Test that providing an invalid config file raises an error."""
+        try:
+            tempdir = tempfile.mkdtemp()
+            cfg_file = os.path.join(tempdir, 'invalid.cfg')
+            _write_config_file(cfg_file, [_ConfigSection('/no/such/file.txt',
+                                                         tempdir)])
+            self.assertRaises(OSError, backup.main, ['--config', cfg_file])
+
+        finally:
+            shutil.rmtree(tempdir)
+

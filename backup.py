@@ -79,7 +79,7 @@ def archive_path(dest, src, excludes=None, verbose=False):
             to False.
 
     Raises:
-        OSError:    if the 'tar' command fails for any reason.
+        CalledProcessError: if the 'tar' command fails for any reason.
     """
     assert dest and dest.endswith('.tar') and not os.path.isdir(dest) and \
            os.path.isdir(os.path.dirname(dest))
@@ -113,7 +113,7 @@ def unarchive_path(dest, src, verbose=False):
             to False.
 
     Raises:
-        OSError:    if the 'tar' command fails for any reason.
+        CalledProcessError: if the 'tar' command fails for any reason.
     """
     assert dest and os.path.isdir(dest)
     assert src and src.endswith('.tar') and os.path.isfile(src)
@@ -139,7 +139,7 @@ def compress_path(dest, src, verbose=False):
             to False.
 
     Raises:
-        OSError:    if the 'xz' command fails for any reason.
+        CalledProcessError: if the 'xz' command fails for any reason.
     """
     assert dest and dest.endswith('.xz') and not os.path.isdir(dest) and \
            os.path.isdir(os.path.dirname(dest))
@@ -172,7 +172,7 @@ def uncompress_path(dest, src, verbose=False):
             to False.
 
     Raises:
-        OSError:    if the 'xz' command fails for any reason.
+        CalledProcessError: if the 'xz' command fails for any reason.
     """
     assert dest and not os.path.isdir(dest) and \
            os.path.isdir(os.path.dirname(dest))
@@ -207,7 +207,7 @@ def encrypt_path(dest, src, homedir=None, verbose=False):
             to False.
 
     Raises:
-        OSError:    if the 'gpg' command fails for any reason.
+        CalledProcessError: if the 'gpg' command fails for any reason.
     """
     assert dest and dest.endswith('.gpg') and not os.path.isdir(dest) and \
            os.path.isdir(os.path.dirname(dest))
@@ -243,7 +243,7 @@ def unencrypt_path(dest, src, homedir=None, verbose=False):
             to False.
 
     Raises:
-        OSError:    if the 'gpg' command fails for any reason.
+        CalledProcessError: if the 'gpg' command fails for any reason.
     """
     assert dest and not os.path.isdir(dest)and \
            os.path.isdir(os.path.dirname(dest))
@@ -278,7 +278,7 @@ def copy_path(dest, src, excludes=None, verbose=False):
             to False.
 
     Raises:
-        OSError:    if the 'rsync' command fails for any reason.
+        CalledProcessError: if the 'rsync' command fails for any reason.
     """
     assert dest and os.path.isdir(os.path.dirname(dest))
     assert src and os.path.exists(src)
