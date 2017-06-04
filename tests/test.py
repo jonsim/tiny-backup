@@ -32,6 +32,14 @@ import sys
 import unittest
 
 #
+# Shared testing defines.
+#
+
+GPG_HOME = os.path.join(sys.path[0], 'gpg-test-homedir')
+
+
+
+#
 # Shared testing methods.
 #
 

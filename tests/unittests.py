@@ -118,13 +118,45 @@ class TestBackupMethods(unittest.TestCase):
                                processed_dirname, output_dirname,
                                output_is_dir=False, processed_is_dir=False,
                                processed_is_same=False):
+        """
+        Creates a directory structure in an 'input' directory. Then performs a
+        generic 'processing function' to mutate this input directory structure
+        into something in a 'processed' directory. Finally it performs a generic
+        'unprocessing function' to un-mutate this processed directory into a
+        directory structure in an 'output' directory. Asserts throughout that
+        the contents of input and output directories is the same, and the
+        processed directory state is as expected.
+
+        Args:
+            processing_func:        A callable which has a signature like
+                processing_func(dest, src) where dest is a path to the processed
+                output and src is a path to the input for processing.
+            unprocessing_func:      A callable which has a signature like
+                unprocessing_func(dest, src) where dest is a path to the
+                unprocessed output and src is a path to the input for
+                unprocessing.
+            processed_file_types:   A list of strings describing the acceptable
+                file types of the processed output.
+            input_dirname:          string name of the input dir structure.
+            processed_dirname:      string name of the processed dir structure.
+            output_dirname:         string name of the unprocessed dir structure
+            output_is_dir:          boolean, True if the output is a directory.
+            processed_is_dir:       boolean, True if the processed output is a
+                directory.
+            processed_is_same:      boolean, True if the processed output is the
+                same as the input.
+        """
         try:
             tempdir = tempfile.mkdtemp()
+            in_dir = os.path.join(tempdir, 'input')
+            prc_dir = os.path.join(tempdir, 'processed')
             out_dir = os.path.join(tempdir, 'output')
+            os.makedirs(in_dir)
+            os.makedirs(prc_dir)
             os.makedirs(out_dir)
 
-            test_input = os.path.join(tempdir, input_dirname)
-            test_processed = os.path.join(tempdir, processed_dirname)
+            test_input = os.path.join(in_dir, input_dirname)
+            test_processed = os.path.join(prc_dir, processed_dirname)
             test_output = os.path.join(out_dir, output_dirname)
 
             # Create the structure.
@@ -138,7 +170,8 @@ class TestBackupMethods(unittest.TestCase):
             test_input_hash = test.get_dir_md5(test_input)
 
             # Perform the processing operation on the directory.
-            processing_func(test_processed, test_input)
+            processing_func(prc_dir if processed_is_dir else test_processed,
+                            test_input)
 
             # Assert the processed state looks as we expect.
             self.assertTrue(os.path.isdir(test_input))
@@ -224,9 +257,8 @@ class TestBackupMethods(unittest.TestCase):
         # Wrap the backup.xcrypt_path functions so we can inject the unittesting
         # homedir and use it's key (which should never be used for anything as
         # it's completely insecure) rather than the keys of the current user.
-        test_home = os.path.join(sys.path[0], 'gpg-test-homedir')
-        encrypt = lambda d, s: backup.encrypt_path(d, s, homedir=test_home)
-        unencrypt = lambda d, s: backup.unencrypt_path(d, s, homedir=test_home)
+        encrypt = lambda d, s: backup.encrypt_path(d, s, homedir=test.GPG_HOME)
+        unencrypt = lambda d, s: backup.unencrypt_path(d, s, homedir=test.GPG_HOME)
         self._assert_file_processing(encrypt, unencrypt,
                                      [self._FILE_TYPE_GPG, self._FILE_TYPE_DATA],
                                      'testfile.txt', 'testfile.gpg',
@@ -237,9 +269,8 @@ class TestBackupMethods(unittest.TestCase):
         # Wrap the backup.xcrypt_path functions so we can inject the unittesting
         # homedir and use it's key (which should never be used for anything as
         # it's completely insecure) rather than the keys of the current user.
-        test_home = os.path.join(sys.path[0], 'gpg-test-homedir')
-        encrypt = lambda d, s: backup.encrypt_path(d, s, homedir=test_home)
-        unencrypt = lambda d, s: backup.unencrypt_path(d, s, homedir=test_home)
+        encrypt = lambda d, s: backup.encrypt_path(d, s, homedir=test.GPG_HOME)
+        unencrypt = lambda d, s: backup.unencrypt_path(d, s, homedir=test.GPG_HOME)
         self._assert_file_processing(encrypt, unencrypt,
                                      [self._FILE_TYPE_GPG, self._FILE_TYPE_DATA],
                                      'testfile.bin', 'encrypted.gpg',
@@ -263,8 +294,8 @@ class TestBackupMethods(unittest.TestCase):
         """Test the copy methods with a directory path argument."""
         self._assert_dir_processing(backup.copy_path, backup.copy_path,
                                     self._FILE_TYPE_DIR, 'struct',
-                                    'copied', 'struct', processed_is_dir=True,
-                                    processed_is_same=True)
+                                    'struct', 'struct', processed_is_dir=True,
+                                    output_is_dir=True, processed_is_same=True)
 
     def test_resolve_relative_path(self):
         """Test backup.resolve_relative_path"""

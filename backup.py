@@ -102,7 +102,8 @@ def unarchive_path(dest, src, verbose=False):
                       (cpe.cmd, cpe.output))
 
 def compress_path(dest, src, verbose=False):
-    assert src and os.path.exists(src)
+    assert dest and not os.path.isdir(dest) and dest.endswith('.xz')
+    assert src and os.path.isfile(src)
     cmd = ['xz']
     if verbose:
         print '\ncompress_path(%s, %s)' % (dest, src)
@@ -122,6 +123,7 @@ def compress_path(dest, src, verbose=False):
                       (cpe.cmd, cpe.output))
 
 def uncompress_path(dest, src, verbose=False):
+    assert dest and not os.path.isdir(dest)
     assert src and os.path.isfile(src) and src.endswith('.xz')
     cmd = ['xz']
     if verbose:
@@ -188,7 +190,8 @@ def unencrypt_path(dest, src, homedir=None, verbose=False):
                       (cpe.cmd, cpe.output))
 
 def copy_path(dest, src, excludes=[], verbose=False):
-    assert dest and src
+    assert dest
+    assert src
     cmd = ['rsync']
     if verbose:
         print '\ncopy_path(%s, %s)' % (dest, src)
@@ -202,8 +205,6 @@ def copy_path(dest, src, excludes=[], verbose=False):
     if excludes:
         for exclude in excludes:
             cmd.append('--filter=exclude_%s' % (exclude))
-    if os.path.isdir(src) and not src.endswith('/'):
-        src += '/'
     cmd.append(src)
     cmd.append(dest)
     try:
@@ -220,7 +221,7 @@ def resolve_relative_path(path, config_path):
 def get_out_filename(dirname, src, extension):
     return os.path.join(dirname, '%s.%s' % (os.path.basename(src), extension))
 
-def process_section(config, section, config_path, verbose=False):
+def process_section(config, section, config_path, verbose=False, gpg_home=None):
     # Extract fields from the section (and write-back any missing).
     if not config.has_option(section, SRC_KEY):
         config.set(section, SRC_KEY, section)
@@ -255,7 +256,7 @@ def process_section(config, section, config_path, verbose=False):
 
         if encrypt:
             stage_dest = get_out_filename(tempdir, stage_src, 'gpg')
-            encrypt_path(stage_dest, stage_src, verbose=verbose)
+            encrypt_path(stage_dest, stage_src, verbose=verbose, homedir=gpg_home)
             stage_src = stage_dest
 
     # Perform copy.
@@ -268,6 +269,7 @@ def main(argv=None):
         argv:   list of strings to pass through to the ArgumentParser. If None
             will pass through sys.argv instead. Defaults to None.
     """
+    global _TEMPDIR
     # Handle command line.
     parser = argparse.ArgumentParser(description='A micro backup manager, '
                                      'designed to be lightly configurable, '
@@ -277,6 +279,11 @@ def main(argv=None):
                         type=str, default='~/.backup_config',
                         help='The location of the backup config file to read. '
                         'Defaults to %(default)s')
+    parser.add_argument('--gpg-home', metavar='PATH',
+                        type=str, default=None,
+                        help='The location of the GPG home directory to use if '
+                        'encrypting data. Defaults to that of the machine\'s '
+                        'GPG implementation (typically ~/gnupg).')
     parser.add_argument('--restore',
                         action='store_true', default=False,
                         help='Reverse the backup process to restore the local '
@@ -310,10 +317,12 @@ def main(argv=None):
     # Perform the backup.
     try:
         for section in config.sections():
-            process_section(config, section, args.config, args.verbose)
+            process_section(config, section, args.config, verbose=args.verbose,
+                            gpg_home=args.gpg_home)
     finally:
         if _TEMPDIR:
             shutil.rmtree(_TEMPDIR)
+            _TEMPDIR = None
 
 # Entry point.
 if __name__ == "__main__":
