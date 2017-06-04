@@ -26,13 +26,39 @@ System tests for tiny-backup.
 
 Maintained at https://github.com/jonsim/tiny-backup
 """
+import contextlib
 import os
-import subprocess
 import shutil
 import sys
 import tempfile
 import unittest
+# To avoid having to make the parent directory a module just amend PYTHONPATH.
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+import backup
 import test
+
+@contextlib.contextmanager
+def redir_stdstreams():
+    """
+    Context manager which redirects stdout and stderr for its duration and
+    yields the newly redirected versions.
+
+    This is taken from https://stackoverflow.com/a/17981937
+
+    Yields:
+        stdout: redirected stdout (which will be equivalent to sys.stdout within
+            the scope of this context manager).
+        stderr: redirected stderr (which will be equivalent to sys.stderr within
+            the scope of this context manager).
+    """
+    import StringIO
+    new_stdout, new_stderr = StringIO.StringIO(), StringIO.StringIO()
+    old_stdout, old_stderr = sys.stdout, sys.stderr
+    try:
+        sys.stdout, sys.stderr = new_stdout, new_stderr
+        yield sys.stdout, sys.stderr
+    finally:
+        sys.stdout, sys.stderr = old_stdout, old_stderr
 
 class _ConfigSection(object):
     def __init__(self, section, dest, src=None, archive=None, compress=None,
@@ -62,8 +88,6 @@ def _write_config_file(config_path, sections):
 class TestBackupSystem(unittest.TestCase):
     """System tests TestCase"""
 
-    _BACKUP_BIN = os.path.join(sys.path[0], '..', 'backup.py')
-
     def test_single_file(self):
         """Most basic test of a single file backup."""
         try:
@@ -91,8 +115,12 @@ class TestBackupSystem(unittest.TestCase):
             in_dir_hash = test.get_dir_md5(in_dir)
 
             # Run backup.
-            stdout = subprocess.check_output([self._BACKUP_BIN, '--config', cfg_file])
-            self.assertEqual('', stdout)
+            with redir_stdstreams() as (stdout, stderr):
+                backup.main(['--config', cfg_file])
+            stdout_str = stdout.getvalue().strip()
+            stderr_str = stderr.getvalue().strip()
+            self.assertEqual('', stdout_str)
+            self.assertEqual('', stderr_str)
 
             # Assert the output state looks as we expect.
             self.assertTrue(os.path.isfile(in_file))

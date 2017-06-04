@@ -33,6 +33,7 @@ import os           # makedirs
 import os.path      # exists, isfile, isdir, expanduser
 import subprocess   # check_output
 import shutil       # rmtree
+import sys          # stdout
 import tempfile     # mkdtemp
 
 __version__ = '1.0.0'
@@ -77,7 +78,7 @@ def archive_path(dest, src, excludes=[], verbose=False):
     cmd.append(os.path.dirname(src))
     cmd.append(os.path.basename(src))
     try:
-        subprocess.check_call(cmd)
+        sys.stdout.write(subprocess.check_output(cmd))
     except subprocess.CalledProcessError as cpe:
         raise OSError('tar command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
@@ -95,7 +96,7 @@ def unarchive_path(dest, src, verbose=False):
     cmd.append('--directory')
     cmd.append(dest)
     try:
-        subprocess.check_call(cmd)
+        sys.stdout.write(subprocess.check_output(cmd))
     except subprocess.CalledProcessError as cpe:
         raise OSError('tar command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
@@ -158,7 +159,7 @@ def encrypt_path(dest, src, homedir=None, verbose=False):
     cmd.append('--encrypt')
     cmd.append(src)
     try:
-        subprocess.check_call(cmd)
+        sys.stdout.write(subprocess.check_output(cmd))
     except subprocess.CalledProcessError as cpe:
         raise OSError('gpg command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
@@ -181,7 +182,7 @@ def unencrypt_path(dest, src, homedir=None, verbose=False):
     cmd.append('--decrypt')
     cmd.append(src)
     try:
-        subprocess.check_call(cmd)
+        sys.stdout.write(subprocess.check_output(cmd))
     except subprocess.CalledProcessError as cpe:
         raise OSError('gpg command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
@@ -206,7 +207,7 @@ def copy_path(dest, src, excludes=[], verbose=False):
     cmd.append(src)
     cmd.append(dest)
     try:
-        subprocess.check_call(cmd)
+        sys.stdout.write(subprocess.check_output(cmd))
     except subprocess.CalledProcessError as cpe:
         raise OSError('rsync command "%s" exitted with "%s"' %
                       (cpe.cmd, cpe.output))
@@ -260,8 +261,13 @@ def process_section(config, section, config_path, verbose=False):
     # Perform copy.
     copy_path(pipeline_dest, stage_src, verbose=verbose)
 
-def main():
-    """Main method."""
+def main(argv=None):
+    """Main method.
+
+    Args:
+        argv:   list of strings to pass through to the ArgumentParser. If None
+            will pass through sys.argv instead. Defaults to None.
+    """
     # Handle command line.
     parser = argparse.ArgumentParser(description='A micro backup manager, '
                                      'designed to be lightly configurable, '
@@ -285,7 +291,7 @@ def main():
                         help='Print additional output.')
     parser.add_argument('--version',
                         action='version', version='%(prog)s ' + __version__)
-    args = parser.parse_args()
+    args = parser.parse_args(args=argv)
 
     # Process command line.
     if args.restore:
