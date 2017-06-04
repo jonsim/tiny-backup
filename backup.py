@@ -81,7 +81,8 @@ def archive_path(dest, src, excludes=None, verbose=False):
     Raises:
         OSError:    if the 'tar' command fails for any reason.
     """
-    assert dest and not os.path.isdir(dest) and dest.endswith('.tar')
+    assert dest and dest.endswith('.tar') and not os.path.isdir(dest) and \
+           os.path.isdir(os.path.dirname(dest))
     assert src and os.path.exists(src)
     cmd = ['tar']
     cmd.append('--create')
@@ -96,11 +97,7 @@ def archive_path(dest, src, excludes=None, verbose=False):
     cmd.append('--directory')
     cmd.append(os.path.dirname(src))
     cmd.append(os.path.basename(src))
-    try:
-        sys.stdout.write(subprocess.check_output(cmd))
-    except subprocess.CalledProcessError as cpe:
-        raise OSError('tar command "%s" exitted with "%s"' %
-                      (cpe.cmd, cpe.output))
+    sys.stdout.write(subprocess.check_output(cmd))
 
 def unarchive_path(dest, src, verbose=False):
     """
@@ -119,7 +116,7 @@ def unarchive_path(dest, src, verbose=False):
         OSError:    if the 'tar' command fails for any reason.
     """
     assert dest and os.path.isdir(dest)
-    assert src and os.path.isfile(src) and src.endswith('.tar')
+    assert src and src.endswith('.tar') and os.path.isfile(src)
     cmd = ['tar']
     cmd.append('--extract')
     if verbose:
@@ -129,11 +126,7 @@ def unarchive_path(dest, src, verbose=False):
     cmd.append(src)
     cmd.append('--directory')
     cmd.append(dest)
-    try:
-        sys.stdout.write(subprocess.check_output(cmd))
-    except subprocess.CalledProcessError as cpe:
-        raise OSError('tar command "%s" exitted with "%s"' %
-                      (cpe.cmd, cpe.output))
+    sys.stdout.write(subprocess.check_output(cmd))
 
 def compress_path(dest, src, verbose=False):
     """
@@ -148,7 +141,8 @@ def compress_path(dest, src, verbose=False):
     Raises:
         OSError:    if the 'xz' command fails for any reason.
     """
-    assert dest and not os.path.isdir(dest) and dest.endswith('.xz')
+    assert dest and dest.endswith('.xz') and not os.path.isdir(dest) and \
+           os.path.isdir(os.path.dirname(dest))
     assert src and os.path.isfile(src)
     cmd = ['xz']
     if verbose:
@@ -163,10 +157,8 @@ def compress_path(dest, src, verbose=False):
     try:
         dest_file = open(dest, 'w')
         subprocess.check_call(cmd, stdout=dest_file)
+    finally:
         dest_file.close()
-    except subprocess.CalledProcessError as cpe:
-        raise OSError('xz command "%s" exitted with "%s"' %
-                      (cpe.cmd, cpe.output))
 
 def uncompress_path(dest, src, verbose=False):
     """
@@ -182,8 +174,9 @@ def uncompress_path(dest, src, verbose=False):
     Raises:
         OSError:    if the 'xz' command fails for any reason.
     """
-    assert dest and not os.path.isdir(dest)
-    assert src and os.path.isfile(src) and src.endswith('.xz')
+    assert dest and not os.path.isdir(dest) and \
+           os.path.isdir(os.path.dirname(dest))
+    assert src and src.endswith('.xz') and os.path.isfile(src)
     cmd = ['xz']
     if verbose:
         print '\nuncompress_path(%s, %s)' % (dest, src)
@@ -197,10 +190,8 @@ def uncompress_path(dest, src, verbose=False):
     try:
         dest_file = open(dest, 'w')
         subprocess.check_call(cmd, stdout=dest_file)
+    finally:
         dest_file.close()
-    except subprocess.CalledProcessError as cpe:
-        raise OSError('xz command "%s" exitted with "%s"' %
-                      (cpe.cmd, cpe.output))
 
 def encrypt_path(dest, src, homedir=None, verbose=False):
     """
@@ -218,7 +209,8 @@ def encrypt_path(dest, src, homedir=None, verbose=False):
     Raises:
         OSError:    if the 'gpg' command fails for any reason.
     """
-    assert dest and not os.path.isdir(dest) and dest.endswith('.gpg')
+    assert dest and dest.endswith('.gpg') and not os.path.isdir(dest) and \
+           os.path.isdir(os.path.dirname(dest))
     assert src and os.path.isfile(src)
     cmd = ['gpg']
     if verbose:
@@ -234,11 +226,7 @@ def encrypt_path(dest, src, homedir=None, verbose=False):
     cmd.append(dest)
     cmd.append('--encrypt')
     cmd.append(src)
-    try:
-        sys.stdout.write(subprocess.check_output(cmd))
-    except subprocess.CalledProcessError as cpe:
-        raise OSError('gpg command "%s" exitted with "%s"' %
-                      (cpe.cmd, cpe.output))
+    sys.stdout.write(subprocess.check_output(cmd))
 
 def unencrypt_path(dest, src, homedir=None, verbose=False):
     """
@@ -257,8 +245,9 @@ def unencrypt_path(dest, src, homedir=None, verbose=False):
     Raises:
         OSError:    if the 'gpg' command fails for any reason.
     """
-    assert dest and not os.path.isdir(dest)
-    assert src and os.path.isfile(src) and src.endswith('.gpg')
+    assert dest and not os.path.isdir(dest)and \
+           os.path.isdir(os.path.dirname(dest))
+    assert src and src.endswith('.gpg') and os.path.isfile(src)
     cmd = ['gpg']
     if verbose:
         print '\nunencrypt_path(%s, %s)' % (dest, src)
@@ -273,11 +262,7 @@ def unencrypt_path(dest, src, homedir=None, verbose=False):
     cmd.append(dest)
     cmd.append('--decrypt')
     cmd.append(src)
-    try:
-        sys.stdout.write(subprocess.check_output(cmd))
-    except subprocess.CalledProcessError as cpe:
-        raise OSError('gpg command "%s" exitted with "%s"' %
-                      (cpe.cmd, cpe.output))
+    sys.stdout.write(subprocess.check_output(cmd))
 
 def copy_path(dest, src, excludes=None, verbose=False):
     """
@@ -295,8 +280,8 @@ def copy_path(dest, src, excludes=None, verbose=False):
     Raises:
         OSError:    if the 'rsync' command fails for any reason.
     """
-    assert dest
-    assert src
+    assert dest and os.path.isdir(os.path.dirname(dest))
+    assert src and os.path.exists(src)
     cmd = ['rsync']
     if verbose:
         print '\ncopy_path(%s, %s)' % (dest, src)
@@ -312,11 +297,7 @@ def copy_path(dest, src, excludes=None, verbose=False):
             cmd.append('--filter=exclude_%s' % (exclude))
     cmd.append(src)
     cmd.append(dest)
-    try:
-        sys.stdout.write(subprocess.check_output(cmd))
-    except subprocess.CalledProcessError as cpe:
-        raise OSError('rsync command "%s" exitted with "%s"' %
-                      (cpe.cmd, cpe.output))
+    sys.stdout.write(subprocess.check_output(cmd))
 
 def resolve_relative_path(path, config_path):
     """
